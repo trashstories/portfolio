@@ -1,0 +1,40 @@
+project:
+  type: website
+
+website:
+  title: "Jamie Pantazi Esmond"
+  navbar:
+    pinned: true
+    right:
+      - href: index.qmd
+        text: Home
+      - about.qmd
+      - text: "Abolition"
+        file: abolition/abolition.qmd
+      - text: "Immigration"
+        file: immigration/immigration.qmd
+      - text: "History"
+        file: history/history.qmd
+      - text: "Miscellaneous"
+        file: misc/misc.qmd
+      - resume.qmd
+      
+  sidebar:
+    - title: "Abolition"
+      style: "docked"
+      background: light
+      contents:
+        - abolition/Geography_of_Mass_Incarceration.qmd
+        - abolition/prisontowns.qmd
+        - immigration/detention.qmd
+        - history/elias.qmd
+        - history/badmen.qmd
+        
+    - title: "Immigration"
+
+format:
+  html:
+    theme: custom.scss
+    toc: true
+
+

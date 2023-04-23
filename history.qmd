@@ -1,0 +1,29 @@
+---
+title: "History"
+subtitle: "Historical Research in the US"
+format: 
+  html: 
+    toc: true
+    theme: custom.scss
+    fig-cap-location: "top"
+    tbl-cap-location: "top"
+    title-block-banner: true
+    title-block-banner-color: "#744FC6"
+    fig-align: "center"
+---
+
+<div style="float:left; margin-right: 10px;">
+  [![](manifest.jpg){width=150 fig-alt="America Progress by John Gast (1872)"}](badmen.html)
+</div>
+
+[Constructing Bad Men](badmen.html): Literary Myths and Protectionist Masculinity (December 2018)
+
+<br><br>
+
+<div style="float:left; margin-right: 10px;">
+  [![](elias.png){width=150 fig-alt="Portrait of Elias Boudinot with a Cherokee Phoenix newspaper backdrop."}](elias.html)
+</div>
+
+[Elias Boudinot](elias.html): Editor in Assimilation (May 2018)
+
+<br><br><br><br>

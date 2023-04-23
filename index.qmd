@@ -1,0 +1,89 @@
+---
+format: 
+  html: 
+    toc: true
+    theme: custom.scss
+    fig-cap-location: "bottom"
+    tbl-cap-location: "top"
+    fig-align: "center"
+    template-partials:
+      - "_layouts/sidebar.html"
+---
+
+# Reports
+
+## Abolition
+<div style="float:left; margin-right: 10px;">
+  [![](abolition/Map2_CrisisFull.png){width=200 fig-alt="A map of Maryland showing imprisonment rate and distance to inpatient mental health facilities with crisis intervention."}](abolition/Geography_of_Mass_Incarceration.html)
+</div>
+
+[Prisoners of a Broken System](abolition/Geography_of_Mass_Incarceration.html): Investigating the Relationship Between High Imprisonment Rates and Access to Inpatient Mental Health Care in Maryland (May 2023)
+
+<br><br><br>
+
+<div style="float:left; margin-right: 10px;">
+  [![](abolition/figures/ImpactTheroy2.png){width=200 fig-alt="A diagram of bail reform influencing length of detention, reduced plea deas, and increased equality in the justice system."}](abolition/BailReform-JamieEsmond-FinalProject.html)
+</div>
+
+[Money Shouldn't Buy Freedom](abolition/BailReform-JamieEsmond-FinalProject.html): Evaluating the Impact of Bail Reform on Equality and Guilty Plea Deals in Harris County (May 2023)
+
+<br>
+
+<div style="float:left; margin-right: 10px;">
+  [![](abolition/prisons.jpg){width=200 fig-alt="A map of Georgia showing the capacity and location of prisons, color coded to indicate type of facility."}](abolition/prisontowns.html)
+</div>
+
+[Empty Promises of Prosperity](abolition/prisontowns.html): Prison Towns and Quality of Life in Rural Georgia (November 2023)
+
+<br><br><br><br>
+
+## Immigration
+
+<div style="float:left; margin-right: 10px;">
+  [![](immigration/karnes.png){width=100 fig-alt="An image of the sky with flying birds."}](https://www.raicestexas.org/2022/07/20/karnes-family-immigration-prison-as-an-adult-immigration-prison/)
+</div>
+
+[Karnes Family Immigration Prison as an Adult Immigration Prison](https://www.raicestexas.org/2022/07/20/karnes-family-immigration-prison-as-an-adult-immigration-prison/): Why Expedited Removal and Immigrant Detention Must End (July 2022)
+
+<br><br><br>
+
+<div style="float:left; margin-right: 10px;">
+  [![](immigration/detention.png){width=150 fig-alt="An image of a detention facility and the text IMPACTS: Immigrant detention tears families apart, denies immigrants access to legal counsel and necessary healthcare, as well as drains the economy for a profit. Another image of protesters with signs and the text SOLUTIONS: Community based alternatives are more humane, more effective, and less costly thandetention."}](immigration/detention.html)
+</div>
+
+[Ending Immigrant Detention in the United States](immigration/detention.html) - a policy brief (April 2022)
+
+<br><br><br><br>
+
+## History
+
+<div style="float:left; margin-right: 10px;">
+  [![](history/manifest.jpg){width=150 fig-alt="America Progress by John Gast (1872)"}](history/badmen.html)
+</div>
+
+[Constructing Bad Men](history/badmen.html): Literary Myths and Protectionist Masculinity (December 2018)
+
+<br><br>
+
+<div style="float:left; margin-right: 10px;">
+  [![](history/elias.png){width=150 fig-alt="Portrait of Elias Boudinot with a Cherokee Phoenix newspaper backdrop."}](history/elias.html)
+</div>
+
+[Elias Boudinot](history/elias.html): Editor in Assimilation (May 2018)
+
+<br><br><br><br><br>
+
+<div style="float:left; margin-right: 10px;">
+  [![](history/borgia.jpg){width=150 fig-alt="An image from the Codex Borgia showing a deity and human exchanging blood."}](history/identity.html)
+</div>
+
+[Indigenous Identity Outside the National Narrative](history/identity.html): An Analysis of Indigenous Resilience in Mexico (December 2017)
+
+<br><br>
+
+# Maps
+
+ [![Click to view full report.](abolition/Map1_FacilitiesFull.png){fig-alt="A map of Maryland showing imprisonment rate and mental health facilities."}](abolition/Geography_of_Mass_Incarceration.html)
+
+# Graphics
+

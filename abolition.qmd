@@ -1,0 +1,39 @@
+---
+title: "Abolition"
+subtitle: "Research and Data regarding Police and Prison Abolition"
+format: 
+  html: 
+    toc: true
+    theme: custom.scss
+    fig-cap-location: "top"
+    tbl-cap-location: "top"
+    title-block-banner: true
+    title-block-banner-color: "#744FC6"
+    fig-align: "center"
+    # template-partials:
+    #   - "_layouts/sidebar.html"
+---
+
+<div style="float:left; margin-right: 10px;">
+  [![](Map2_CrisisFull.png){width=200 fig-alt="A map of Maryland showing imprisonment rate and distance to inpatient mental health facilities with crisis intervention."}](Geography_of_Mass_Incarceration.html)
+</div>
+
+[Prisoners of a Broken System](Geography_of_Mass_Incarceration.html): Investigating the Relationship Between High Imprisonment Rates and Access to Inpatient Mental Health Care in Maryland (May 2023)
+
+<br><br><br>
+
+<div style="float:left; margin-right: 10px;">
+  [![](figures/ImpactTheroy2.png){width=200 fig-alt="A diagram of bail reform influencing length of detention, reduced plea deas, and increased equality in the justice system."}](BailReform-JamieEsmond-FinalProject.html)
+</div>
+
+[Money Shouldn't Buy Freedom](BailReform-JamieEsmond-FinalProject.html): Evaluating the Impact of Bail Reform on Equality and Guilty Plea Deals in Harris County (May 2023)
+
+<br>
+
+<div style="float:left; margin-right: 10px;">
+  [![](prisons.jpg){width=200 fig-alt="A map of Georgia showing the capacity and location of prisons, color coded to indicate type of facility."}](prisontowns.html)
+</div>
+
+[Empty Promises of Prosperity](prisontowns.html): Prison Towns and Quality of Life in Rural Georgia (November 2023)
+
+<br>

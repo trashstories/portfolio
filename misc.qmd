@@ -1,0 +1,15 @@
+---
+title: "Miscellaneous"
+subtitle: "Miscellaneous Research and Data Projects"
+format: 
+  html: 
+    toc: true
+    theme: custom.scss
+    fig-cap-location: "top"
+    tbl-cap-location: "top"
+    title-block-banner: true
+    title-block-banner-color: "#744FC6"
+    fig-align: "center"
+---
+
+Add things here...

@@ -1,0 +1,18 @@
+---
+title: "About"
+format: 
+  html: 
+    toc: true
+    theme: custom.scss
+    fig-cap-location: "top"
+    tbl-cap-location: "top"
+    title-block-banner: true
+    title-block-banner-color: "#744FC6"
+    fig-align: "center"
+---
+
+Jamie Pantazi Esmond is a graduate student at Georgia State University in the [Andrew Young School of Policy Studies](https://aysps.gsu.edu/) earning a Master's in Public Policy with a concentration in policy analytics. 
+
+She previously worked in the Family Detention Department of [RAICES (Refugee and Immigrant Center for Education and Legal Services](https://www.raicestexas.org/)), analyzing, organizing, and reporting on data collected from detained clients. She is passionate about research, data, and advocacy. 
+
+She has experience working with issues such as asylum law, housing insecurity, prison abolition, and peer-led mental health support. She hopes to continue her work using data to advocate for marginalized communities struggling against systemic oppression.
