@@ -6,6 +6,8 @@ date: "today"
 date-format: "long"
 bibliography: Geography_of_Mass_Incarceration.bib
 csl: "https://raw.githubusercontent.com/citation-style-language/styles/master/apa.csl"
+lof: true
+lot: true
 format: 
   html: 
     toc: true
@@ -15,6 +17,8 @@ format:
     title-block-banner: true
     title-block-banner-color: "#744FC6"
     fig-align: "center"
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, echo = FALSE, include = FALSE, message = FALSE, warning = FALSE}
@@ -25,14 +29,29 @@ library(modelsummary)
 library(scales)
 library(readr)
 library(tufte)
-library(sf) 
 library(broom)
 library(kableExtra)
 library(tinytex)
 library(summarytools)
+library(patchwork)
+library(stringr)
+library(ggpmisc)
+library(cowplot)
+library(grid)
 
 MD <- readRDS("data/MD_GIS_02.RDS")
 Facilities <- readRDS("data/Facilities_01.RDS")
+
+MD <- MD %>% 
+  filter(FIPS != 24510100300, # Baltimore jail
+         FIPS != 24043011000, # Maryland correctional training center
+         FIPS != 24003740400) %>%  # Maryland state prison  
+  mutate(crisis = factor(IH_Emer_CrisisIntervention, 
+                         labels = c("No Crisis Intervention", 
+                                    "Crisis Intervention")),
+         crisis_pay = factor(Crisis_IH_PaymentAssist_Assistance,
+                             labels = c("No Payment Assistance",
+                                        "Payment Assistance")))
 
 ```
 
@@ -54,17 +73,15 @@ As of 2021, about a dozen states had ended prison gerrymandering which would imp
 
 ## Mental Health, Crime, and Imprisonment
 
-Mental health care is an important resource to ensure overall health and quality of life [@princeNoHealthMental2007]. The expansion of mental health care in the last few decades has been a response to a dire crisis that has long been ignored and stigmatized, and the benefits of access and awareness of mental health services are obvious to many who have utilized these services [@hortonLaunchingNewMovement2007]. Though access to mental health services is generally regarded as a positive influence on communities, the marginalized groups who often lack access to these services are the same communities who are targeted for high crime and imprisonment rates [@saxenaResourcesMentalHealth2007]. The link between access to mental health care, crime, and imprisonment is worth investigating to advocate for more resources to be made available for these communities and potentially prevent crime and harm before they happen, and as a result, reduce unnecessary imprisonment.
+Mental health care is an important resource to ensure overall health and quality of life [@princeNoHealthMental2007]. The expansion of mental health care in the last few decades has been a response to a dire crisis that has long been ignored and stigmatized, and the benefits of access and awareness of mental health services are obvious to many who have utilized these services [@hortonLaunchingNewMovement2007]. Though access to mental health services is generally regarded as a positive influence on communities, the marginalized groups who often lack access to these services are the same communities that are targeted for high crime and imprisonment rates [@saxenaResourcesMentalHealth2007]. The link between access to mental health care, crime, and imprisonment is worth investigating to advocate for more resources to be made available for these communities and potentially prevent crime and harm before they happen, and as a result, reduce unnecessary imprisonment.
 
 Three major components of mental health care and its relationship with imprisonment have been discussed. The first is mental health care as prevention of criminal and violent behavior [@hodginsConsequencesConductDisorder2005; @petrasDevelopmentalEpidemiologicalCourses2008; @brennanMajorMentalDisorders2000]. Increased access to mental health care, especially on a large scale could lead to an overall reduction in violent and aggressive behavior, which comprises most of the crime residents are most concerned about.
 
 The second component is mental health care for the residents impacted by the loss of a loved one or caretaker to imprisonment. Many people in prison are parents or otherwise supportive to other that they leave behind to serve their sentence [@wangBothSidesBars2022]. The social and economic consequences of mass imprisonment are far-reaching, and the individuals living through those consequences would certainly benefit from a support structure that values their mental health [@hatzenbuehlerCollateralDamageMass2015; @nosratiEconomicDeclineIncarceration2019].
 
-Lastly, prison can have a strong psychological impact on a person, and formerly imprisoned people may bring that trauma back to their communities when they are released. People in prison more likely to suffer from a mental health issue, both because, untreated, they are more likely to be arrested and because of the trauma endured throughout their sentence [@cloudLifeSupportPublic2014; @quandtResearchRoundupIncarceration2021]. The damage of imprisonment on mental health can include family disconnection, loss of autonomy and lack of purpose, and unpredictability [@quandtResearchRoundupIncarceration2021]. Accessibility to mental health care may influence productive reintegration after release from prison.
+Lastly, prison can have a strong psychological impact on a person, and formerly imprisoned people may bring that trauma back to their communities when they are released. People in prison are more likely to suffer from a mental health issue, both because, untreated, they are more likely to be arrested and because of the trauma endured throughout their sentence [@cloudLifeSupportPublic2014; @quandtResearchRoundupIncarceration2021]. The damage of imprisonment on mental health can include family disconnection, loss of autonomy and lack of purpose, and unpredictability [@quandtResearchRoundupIncarceration2021]. Accessibility to mental health care may influence productive reintegration after release from prison.
 
 With the new information about the home locations of imprisoned people, there are a number of relationships to investigate. The obvious demographic and economic factors should be considered and potentially controlled in many analyses. One spatial relationship that could be investigated using this data is the accessibility, in terms of distance, to mental health facilities. While there are many dimensions to the concept of accessibility, distance can be a useful indicator of at least when mental health care options are *not* available. Other dimensions to consider are the capacity of facilities, specific services provided, populations served, payment methods accepted, and outreach or awareness of services available. This analysis focuses on the dimension of physical location and proximity as an indicator of access to mental health care, specifically inpatient care for emergency situations.
-
-\newpage
 
 # Data Origins and Background
 
@@ -118,9 +135,7 @@ The US Census provides hundreds of attributes at the census tract level, however
 
 The data about mental health facilities came from the *National Directory of Mental Health Treatment Facilities 2020* as part of the Behavioral Health Services Information System Series [@samhsaNationalDirectoryMental2020]. Since the data is in PDF format, the information needs to be extracted and parsed into an analytic format. Each facility name is accompanied by abbreviated codes that need to be converted into dummy variables. Since this is a comprehensive list of facilities, there are no missing values. The values for facility name and address are strings and do not need to be formatted; however, the address values will be used to obtain the geographic data about their locations on a map and in relation to each census tract.
 
-The spatial data from the ACS is available from the Living Atlas with variables for both the raw counts and the percentages for each attribute as a feature layer for use in ArcGIS Pro [@LivingAtlasWorld]. The data did contain some missing values, but only in three observations and for variables not used for this analysis. Since the data came from a curated source, it was properly formatted as the appropriate data types for both spatial and quantitative analysis.
-
-\newpage
+The spatial data from the ACS is available from the Living Atlas with variables for both the raw counts and the percentages for each attribute as a feature layer for use in ArcGIS Pro [@LivingAtlasWorld]. The data did contain some missing values, but only in three observations and for variables not used for this analysis. Since the data came from a curated source, it was properly formatted as the appropriate data type for both spatial and quantitative analysis.
 
 # Getting an Analytic Dataset
 
@@ -132,25 +147,25 @@ The spatial data from the ACS is available from the Living Atlas with variables 
 
 ### Census Tracts
 
-The imprisonment rate data was merged with several tables from the US Census. These were almost all an exact match because each Census tract has a unique identifier to link it from the data from other datesets. The exception was for the Urban and Rural data because that was only available from 2010 which had less tracts than the 2020 data. The 2010 Urban and Rural census data was joined with 2010 census tract shapefiles in ArcGIS Pro. The spatial data was then apportioned to 2020 tracts based on the area of overlap and weighted by population.
+The imprisonment rate data was merged with several tables from the US Census. These were almost all an exact match because each census tract has a unique identifier to link it to the data from other datasets. The exception was for the Urban and Rural data because that was only available from 2010 which had fewer tracts than the 2020 data. The 2010 Urban and Rural census data was joined with 2010 census tract shapefiles in ArcGIS Pro. The spatial data was then apportioned to 2020 tracts based on the area of overlap and weighted by population.
 
-After merging the census data with the imprisonment data, the variables with relevant values were extracted to removed unneeded information regarding annotations and margins of error. The remaining variables were renamed with more meaningful names to better reflect the meaning of the values.
+After merging the census data with the imprisonment data, the variables with relevant values were extracted to remove unneeded information regarding annotations and margins of error. The remaining variables were renamed with more meaningful names to better reflect the meaning of the values.
 
-The merged data from the Prison Policy Initiative and the Census were joined to the ACS tracts in ArcGIS Pro for mapping. Several variables from ACS Context for Emergency Response were added to the merged dataset including percent less than 18 years old, percent 65 Years and over, percent in dependent age groups (under 18 and 65+), percent of households with no vehicle available, percent with a disability, percent with Medicaid coverage, percent with Medicare coverage, percent with no health insurance coverage, percent without a smart phone, and percent without internet access at home. The new variables were renamed with more meaningful names to better reflect the meaning of the values.
+The merged data from the Prison Policy Initiative and the Census were joined to the ACS tracts in ArcGIS Pro for mapping. Several variables from ACS Context for Emergency Response were added to the merged dataset including percent less than 18 years old, percent 65 Years and over, percent in dependent age groups (under 18 and 65+), percent of households with no vehicle available, percent with a disability, percent with Medicaid coverage, percent with Medicare coverage, percent with no health insurance coverage, percent without a smartphone, and percent without internet access at home. The new variables were renamed with more meaningful names to better reflect the meaning of the values.
 
 ### Mental Health Facilities
 
-After extraction from the directory, the dummy variables for mental health facilities in Maryland were renamed with meaningful names, and the addresses for each facility were geocoded in ArcGIS Pro. The geocoded facilities were also joined the newly merged data by spatial proximity. The distance to the closest mental health facility from the edge each tract was calculated in ArcGIS Pro in feet (as the crow flies) and then converted to miles. The dummy variables for the closest facility was also added to the dataset. This process was repeated for distance to the closest inpatient mental health facility, the closest inpatient facility providing crisis intervention, and the closest inpatient facility accepting walk-ins. Using ArcGIS, the total driving distance in miles and minutes was also calculated from the geographic center of each tract to the closest facility in each of these categories.
+After extraction from the directory, the dummy variables for mental health facilities in Maryland were renamed with meaningful names, and the addresses for each facility were geocoded in ArcGIS Pro. The geocoded facilities were also joined the newly merged data by spatial proximity. The distance to the closest mental health facility from the edge of each tract was calculated in ArcGIS Pro in feet (as the crow flies) and then converted to miles. The dummy variables for the closest facility were also added to the dataset. This process was repeated for distance to the closest inpatient mental health facility, the closest inpatient facility providing crisis intervention, and the closest inpatient facility accepting walk-ins. Using ArcGIS, the total driving distance in miles and minutes was also calculated from the geographic center of each tract to the closest facility in each of these categories.
 
-The complete dataset includes the imprisonment rate values from the Prison Policy Initiative, the selected attributes from the various Census and ACS tables, and the name, address, and dummy variables for the the closest mental health facility, the closest inpatient facility, the closest inpatient facility with crisis intervention, and the the closest inpatient facility accepting walk-ins, along with the linear distance, driving distance, and driving time to these facilities. These facility attributes were chosen because they represent opportunities for an alternative response to a dangerous situtation that may be better resolved with mental health treatment than law enforcement and imprisonment. If individuals who are imprisoned were able to access mental health treatment, and especially inpatient treatment if they may be a threat, in a time of crisis instead of being forced into the stressful and prejudiced criminal justice system, immediate and long term harm could be avoided.
+The complete dataset includes the imprisonment rate values from the Prison Policy Initiative, the selected attributes from the various Census and ACS tables, and the name, address, and dummy variables for the closest mental health facility, the closest inpatient facility, the closest inpatient facility with crisis intervention, and the closest inpatient facility accepting walk-ins, along with the linear distance, driving distance, and driving time to these facilities. These facility attributes were chosen because they represent opportunities for an alternative response to a dangerous situation that may be better resolved with mental health treatment than law enforcement and imprisonment. If individuals who are imprisoned were able to access mental health treatment, and especially inpatient treatment if they may be a threat, in a time of crisis instead of being forced into the stressful and prejudiced criminal justice system, immediate and long-term harm could be avoided.
 
 ## Cleaning
 
 Most of the data collected was mostly clean. A few missing values, misformatted values, and outliers needed to be dealt with. By visually analyzing the raw data, sanity checks, and validation, these issues were identified and resolved. In the imprisonment data, some of the total population values were miscalculated and were manually changed by adding the number of imprisoned individuals to the Census population values in Excel.
 
-Census data contains many variables that describe both the attributes and the accuracy of the attribute's values. Many of these attributes were removed altogether, and for others, only the annotation variables were removed, leaving only the relevant variables. Some of the relevant variables were formatted incorrectly and needed to be converted to a numeric format. Several variables contained missing values, and these were imputed with the mean value of that variable for the tract's county. The last issue with these data was outliers. Because the imprisonment rate is calculated per 100,000 residents, census tracts with extremely low populations may have an extremely high imprisonment rate, even if only one person is from that tract. To resolve this issue, all tracts with less than 100 total population were excluded. Most of these tracts also had very little land area, and their absence should not impact the results.
+Census data contains many variables that describe both the attributes and the accuracy of the attribute's values. Many of these attributes were removed altogether, and for others, only the annotation variables were removed, leaving only the relevant variables. Some of the relevant variables were formatted incorrectly and needed to be converted to a numeric format. Several variables contained missing values, and these were imputed with the mean value of that variable for the tract's county. The observations with imputed values are identifiable through a new variable indicating whether they had missing values. The last issue with these data was outliers. Because the imprisonment rate is calculated per 100,000 residents, census tracts with extremely low populations may have an extremely high imprisonment rate, even if only one person is from that tract. To resolve this issue, all tracts with less than 100 total population were excluded. Most of these tracts also had very little land area, and their absence should not impact the results. Three additional tracts were dropped due to missing values for several variables. The three tracts were missing values because they are tracts that only contain corrections facilities, the Baltimore jail, the Maryland correctional training center, and the Maryland state prison
 
-The ACS data also contained some missing values, but these were not imputed because the variables are not used in this analysis. The total number of observations remaining after cleaning the data fell to 1458 census tracts from the original 1475.
+The ACS data also contained some missing values. Three additional tracts were dropped due to missing values for several ACS variables. The three tracts were missing values because they are tracts that only contain correctional facilities, the Baltimore jail, the Maryland correctional training center, and the Maryland state prison. The total number of observations remaining after cleaning the data fell to 1455 census tracts from the original 1475.
 
 ## Manipulating
 
@@ -162,62 +177,16 @@ In order to be able to perform analysis at the county level as well as the tract
 
 ## Aggregating
 
-*Create some new variables that are common across observations. For example, if you have individual wages, you can calculate the median wage in each state and attach that value to each individual.*
-
-County to Tract
-
-```{r county, eval=FALSE}
-
-## Aggregate to the County Level
-MD_counties <- MD %>% 
-  select(FIPS, Tract, County, Imprisonment_Rate, 
-         Total_Pop1, Total_Pop18, Total_Pop25, 
-         IncomeMedian, pctWhite, pctBlack, pctOther, 
-         pctNoHS, pctHS, pctSomeCollege, pctBachelors, pctGradAdv, 
-         pctUnderPoverty, pctOwner, pctRenter, UnempRate16) %>% 
-  drop_na(Imprisonment_Rate, Total_Pop1, Total_Pop18, Total_Pop25, 
-          IncomeMedian, pctWhite, pctBlack, pctOther, 
-          pctNoHS, pctHS, pctSomeCollege, pctBachelors, pctGradAdv, 
-          pctUnderPoverty, pctOwner, pctRenter, UnempRate16) %>% 
-  group_by(County) %>% 
-  summarise(Imprisonment_RateCounty = mean(Imprisonment_Rate), 
-            Total_Pop18County = sum(Total_Pop18), 
-            IncomeMedianCounty = mean(IncomeMedian),
-            IncomeMedianCounty = mean(IncomeMedian),
-            pctBlackCounty = mean(pctBlack),
-            pctBachelorsCounty = mean(pctBachelors),
-            pctUnderPovertyCounty = mean(pctUnderPoverty),
-            pctRenterCounty = mean(pctRenter),
-            UnempRate16County = mean(UnempRate16))
-
-  
-## Print
-# write.csv(MD_counties, "data_counties.csv", row.names=FALSE)
-# write.csv(MD, "data_selected.csv", row.names=FALSE)
-
-```
-
-\newpage
+To assess the values for each tract in relation to the county they are governed by, the mean values for selected variables were aggregated to the county level. The variables aggregated include the imprisonment rate, median income, and unemployment rate. The following percent variables were also aggregated: percent Black, percent White, percent with a bachelor's degree or higher, percent under the poverty level, percent of residents who own their home, and percent of residents who rent. Once the averages for each county were calculated, the county values were added to the observation for each tract for simpler analysis.
 
 # Analysis of the Data
 
-*At this point, you should have a clean dataset, ready for analysis. In this section, you should let readers know more about your clean data through tables and figures.*
+With all the variables together in one dataset, census tracts and mental health facilities can be compared using a variety of characteristics. Not only is the final dataset free of missing values and unusual census tracts, the analytic dataset has various general characteristics for each tract. Each tract is also linked to the closest mental health facilities offering several specific services. The census tract FIPS (Federal Information Processing Standards) codes remain in the dataset so additional variable can easily be added. Instead of several datasets in different formats with specific information, the full and unique dataset can now help describe different characteristics and dimensions of high rates of imprisonment.
 
-*You should also show the relationship between some variables, again in tables or figures. Finally, you should run at least one regression. While you have some leeway here, you should strongly consider doing the following:*
-
-```{r map1, include = TRUE, fig.align='center', fig.cap="Map 1: Imprisonment Rates and Mental Health Facilities"}
-
-knitr::include_graphics("Map1_FacilitiesFull.png")
-
-```
-
-*Describe and detail your analytic dataset. How has it changed from the raw data?*
-
-## Overall
-
-*Create summary statistics of the key variables (put this in a table).*
-
-```{r summarizeMD, include = TRUE, fig.align='center'}
+```{r summarizeMD, include = TRUE}
+#| label: tbl-sumMD
+#| tbl-cap: "Census Tract Characteristics" 
+#| tbl-align: 'center'
 
 my_pct <- label_percent(accuracy = 0.1, scale = 1)
 my_pct100 <- label_percent(accuracy = 1, scale = 1)
@@ -244,18 +213,18 @@ MDsum <- MD %>%
         order = "p")
 
 rownames(MDsum) <- c("Imprisonment Rate per 100,000",
-                    "Total Population",
-                    "Median Income",
-                    "% Black",
-                    "% with Bachelor's Degree",
-                    "% Under Poverty Level",
-                    "Unemployment Rate",
-                    "% Renter-Occupied Housing",
-                    "% with Disability",
-                    "% with Medicaid",
-                    "% with Medicare",
-                    "% with No Health Insurance",
-                    "% Rural")
+                     "Total Population",
+                     "Median Income",
+                     "% Black",
+                     "% with Bachelor's Degree",
+                     "% Under Poverty Level",
+                     "Unemployment Rate",
+                     "% Renter-Occupied Housing",
+                     "% with Disability",
+                     "% with Medicaid",
+                     "% with Medicare",
+                     "% with No Health Insurance",
+                     "% Rural")
 
 MDsum_tbl <- MDsum %>% 
   mutate(across(c(Mean, Median, Std.Dev, Min, Max), 
@@ -263,20 +232,22 @@ MDsum_tbl <- MDsum %>%
                         ifelse(row_number() %in% c(1,2), my_number(.), 
                                ifelse(. == 100, my_pct100(.), my_pct(.)))))) %>% 
   kable(format.args = list(scientific = FALSE),
-        caption = "Census Tract Characteristics",
         row.names = TRUE,
         align = "c") %>% 
-  row_spec(1:2, background = "#8DE4FF") %>% 
-  row_spec(3:13, background = "#E8D7F1") %>% 
-  column_spec(1, width = "12.85em") %>% 
+  row_spec(1, background = "#F4A5FA") %>% 
+  row_spec(c(3,5,7,9,11,13), background = "#C09FF5") %>% 
   column_spec(2:6, width = "4em")
-
 
 MDsum_tbl
 
 ```
 
-```{r distance, include = TRUE, fig.align='center'}
+@tbl-sumMD summarizes some key variables regarding census tract characteristics in the new dataset. The median income across all tracts in Maryland was `r my_dollar(MDsum$Median[3])`, compared to a national median income of \$62,529. The average percentage of Black residents for each tract was `r my_pct(MDsum$Mean[4])`, compared to only 11.2% nationwide. The average rate of individuals on Medicaid in Maryland is lower than the national average at `r my_pct(MDsum$Mean[10])`, compared to 19.9%. As a midatlantic state, tracts in Maryland have a lower percentage of rural housing than the national average by about half, `r my_pct(MDsum$Mean[13])` and 27%, respectively.
+
+```{r distance, include = TRUE}
+#| label: tbl-distance
+#| tbl-cap: "Distance to Nearest Inpatient Facility" 
+#| tbl-align: 'center'
 
 my_number2 <- label_number(accuracy = 1, suffix = " min")
 my_number3 <- label_number(accuracy = .1)
@@ -306,24 +277,22 @@ rownames(MD_Distance) <- c("Miles to Mental Health Facility*",
                            "Miles to Inpatient Facility*",
                            "Travel Time to Inpatient Facility",
                            "Driving Miles to Inpatient Facility",
-                           "Miles to Inpatient Facility with Crisis Intervention*",
-                           "Travel Time to Inpatient Facility with Crisis Intervention",
-                           "Driving Miles to Inpatient Facility with Crisis Intervention",
+                           "Miles to Inpatient Facility w/ Crisis Intervention*",
+                           "Travel Time to Inpatient Facility w/ Crisis Intervention",
+                           "Driving Miles to Inpatient Facility w/ Crisis Intervention",
                            "Miles to Inpatient Facility accepting Walk-ins*",
                            "Travel Time to Inpatient Facility accepting Walk-ins",
                            "Driving Miles to Inpatient Facility accepting Walk-ins")
 
 MD_Distance %>% 
   mutate(across(c(Mean, Median, Std.Dev, Min, Max),
-                  ~ifelse(row_number() %in% c(2,5,8,11), my_number2(.), my_number3(.)))) %>% 
+                  ~ifelse(row_number() %in% c(2,5,8,11), 
+                          my_number2(.), my_number3(.)))) %>% 
   kable(digits = 2,
-        caption = "Distance to Nearest Inpatient Facility",
         row.names = TRUE,
         align = "c") %>% 
-  row_spec(c(1,4,7,10), background = "#90FFDC") %>% 
-  row_spec(c(2,5,8,11), background = "#8DE4FF") %>% 
-  row_spec(c(3,6,9,12), background = "#8AC4FF") %>% 
-  column_spec(1, width = "16.5em") %>% 
+  row_spec(c(1,3,5,7,9,11), background = "#C09FF5") %>% 
+  column_spec(1, width = "20m") %>%
   column_spec(c(2,4,5), width = "3.5em") %>%
   column_spec(3, width = "4.5em") %>%
   column_spec(6, width = "4em") %>%
@@ -331,26 +300,31 @@ MD_Distance %>%
 
 ```
 
-```{r summarizeFacilities1, include = TRUE, fig.align='center'}
+The key additional variables calculated and added to the dataset are the distances from each census tract to the closest mental health facility with various characteristics. By identifying various measures of access by distance for each tract, this new dataset may offer unique insights about which communities are most in need of investment in mental health well-being and crisis response. As seen in @tbl-distance, the average distance throughout the state is not extreme; the average travel time to any facility is less than ten minutes, and under thirty minutes to inpatient facilities with crisis intervention or who accept walk-in patients. However, some tracts are up to `r my_number2(MD_Distance$Max[2])`utes away for any mental health facility, `r my_number2(MD_Distance$Max[5])`utes for inpatient facilities, and up to almost three hours for an inpatient facility with crisis intervention. For communities in these areas, the only available response to crisis may be the police, which can lead to more harm to an individual in need of mental health services and those around them.
+
+```{r summarizeFacilities1, include = TRUE}
+#| label: tbl-facilities
+#| tbl-cap: "Facility Characteristics" 
+#| tbl-align: 'center'
 
 my_pct1 <- label_percent(accuracy = 0.1)
 my_pct100_2 <- label_percent(accuracy = 1)
 
 Facilities1 <- Facilities %>% 
     select(Setting_Inpatient,
-         Setting_Outpatient,
-         Setting_PartialHospital,
-         Setting_Residential,
-         Setting_Tele,
-         Age_Adults,
-         Emer_CrisisIntervention,
-         Emer_Walkins,
-         FedQualified,
-         Payment_Medicaid,
-         Payment_Medicare,
-         Payment_VA,
-         PaymentAssist_Assistance,
-         PaymentAssist_SlidingScale)
+           Setting_Outpatient,
+           Setting_PartialHospital,
+           Setting_Residential,
+           Setting_Tele,
+           Age_Adults,
+           Emer_CrisisIntervention,
+           Emer_Walkins,
+           FedQualified,
+           Payment_Medicaid,
+           Payment_Medicare,
+           Payment_VA,
+           PaymentAssist_Assistance,
+           PaymentAssist_SlidingScale)
 
 mean_all <- colMeans(Facilities1)
 count_all <- colSums(Facilities1 == 1)
@@ -393,11 +367,8 @@ FacilitiesSum_tbl <- FacilitiesSum %>%
         caption = "Facility Characteristics",
         row.names = TRUE,
         align = "c") %>%
-  row_spec(1:5, background = "#8DE4FF") %>% 
-  row_spec(6, background = "#E8D7F1") %>% 
-  row_spec(7:8, background = "#8AC4FF") %>% 
-  row_spec(9, background = "#F5D7E3") %>% 
-  row_spec(10:14, background = "#90FFDC") %>% 
+  row_spec(c(1,7,13), background = "#F4A5FA") %>% 
+  row_spec(c(3,5,9,11), background = "#C09FF5") %>% 
   column_spec(c(2,3,4,5), width = "5em") %>% 
   column_spec(3, border_right = TRUE)
 
@@ -405,87 +376,124 @@ FacilitiesSum_tbl
 
 ```
 
-*Describe other key elements to the key variables. This could be cross-tabs, figures, or charts (e.g., distribution or frequency counts of a variable). Make sure any figures are self-explanatory and include notes.*
+Of all facilities in Maryland, only `r my_pct1(FacilitiesSum$All[1])`, or `r FacilitiesSum$"Count All"[1]` facilities, offer inpatient care. @tbl-facilities shows the frequency and percentages of various services and payment options. Most of these characteristics will not be covered in-depth in this report; the primary focus will be inpatient facilities with crisis intervention. The larger issue of inadequate mental health outpatient care and cost-prohibitive preventative care is another dimension of the story about the interactions of mental health and imprisonment that could also be explored with these data given the new variables available.
 
-```{r histogramMD, include = TRUE, fig.align='center', fig.cap="Distribution of Imprisonment Rate"}
+## Overall
+
+```{r map1, include = TRUE}
+#| label: fig-map1
+#| fig-cap: "Imprisonment Rates and Mental Health Facilities" 
+#| fig-align: 'center'
+
+knitr::include_graphics("Facilities_wide.png")
+
+```
+
+With this complete analytic dataset, visualizing the primary variables, imprisonment rate and inpatient mental health facilities, on a map provides some preliminary context for greater research questions. The map of imprisonment rates in Maryland, shown in @fig-map1, highlights the concentration of high imprisonment in the Baltimore urban area. Since Baltimore is the largest urban area entirely in Maryland, it is not unexpected to see higher rates of imprisonment in the city and surrounding areas. However, the suburbs of Washington, D.C. are also partially in Maryland with comparable population density, but the imprisonment rate for those areas are much lower than the Baltimore suburbs. Though rural areas outside of the two major metropolitan areas seem to have lower rates of imprisonment overall, the southeast peninsula and northwest panhandle seem to have surprisingly higher rates. From this [map](@fig-map1), it seems that these areas are further from inpatient facilities, and the few in those areas may not have sufficient capacity for the large areas they serve.
+
+```{r histogramMD, include = TRUE, fig.align='center'}
+#| label: fig-MD
+#| fig-cap: "Distribution of Imprisonment Rate by Race" 
+#| fig-align: 'center'
+
+my_mean <- label_number(accuracy = 1, prefix = "mean = ")
+black_dif <- t.test(Imprisonment_Rate ~ black, data = MD)
 
 MD %>%
   ggplot(aes(Imprisonment_Rate, fill = black_cat)) +
-    geom_histogram(color = "blue", binwidth = 100, boundary = 0) +
+    geom_histogram(color = "white", binwidth = 100, boundary = 0) +
+    geom_text(aes(x = ifelse(black == 1, 1036, 462), 
+                  y = ifelse(black == 1, 45, 435), 
+                  label = ifelse(black == 1, my_mean(black_dif$estimate[2]), 
+                                 my_mean(black_dif$estimate[1]))), 
+              color = ifelse(MD$black == 1, "#4FADD0", "#DE4FA6"), size = 3.5,) +
+    geom_vline(aes(xintercept = ifelse(MD$black == 1, black_dif$estimate[2], 
+                                       black_dif$estimate[1]), 
+                   color = black_cat), 
+               linetype = "longdash",
+               linewidth = 1) +
     facet_wrap(vars(black_cat), ncol = 1, scales = "free_y") +
-    scale_fill_manual(values = c("darkblue", "lightblue"), guide = "none") +
-    scale_x_continuous(labels = label_comma(), expand = expansion(mult = 0.01, add = 0)) +
+    scale_fill_manual(values = c("#8CE0FF", "#FF87D1"), guide = "none") +
+    scale_color_manual(values = c("#4FADD0", "#DE4FA6"), guide = "none") +
+    scale_x_continuous(labels = label_comma(), 
+                       expand = expansion(mult = 0.01, add = 0)) +
     labs(x = "Imprisonment Rate per 100,000",
          y = "Number of Census Tracts",
-         caption = "Note: 'Majority Black' rescaled to show distribution.") +
+         caption = "Note: 'Majority Black' rescaled to show distribution. Top: N = 369; Bottom: N = 1086; Total N = 1455") +
     theme_light() +
-    theme(panel.grid.major.x = element_line(color = "white"),
-          panel.grid.minor.x = element_line(color = "white"))
+    theme(panel.border = element_blank(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          text = element_text(family = "serif", 
+                              color = "#310873"),
+          axis.text = element_text(color = "#310873"),
+          strip.text = element_text(color = "#310873", 
+                                    face = "bold", 
+                                    family = "serif"),
+          strip.background = element_blank(),
+          strip.placement = "outside")
+```
+
+An initial overall look at the distribution of the tracts and imprisonment rate shows clear and obvious characteristics related to higher rates is race. @fig-MD clearly shows that census tracts that have a majority Black population have, on average, much higher rates of imprisonment. Tracts with less than a majority Black population had an average imprisonment rate of `r round(black_dif$estimate[1], 0)`, and majority Black tracts had an average of `r round(black_dif$estimate[1], 0)`, or `r round(black_dif$estimate[2] - black_dif$estimate[1], 0)` higher than their counterparts. While majority Black tracts had over 100 tracts with an imprisonment rate above 1,000 per 100,000 people, tracts without a majority Black population had only *eight* above 1,000 per 100,000 people, of which half were majority White (see @tbl-outliers).
+
+```{r outliers, include = TRUE}
+#| label: tbl-outliers
+#| tbl-cap: "Census Tracts Not Majority Black and Over 1000 Imprisoned per 100,000" 
+#| tbl-align: 'center'
+
+MDw <- MD %>% 
+  filter(black == 0) %>% 
+  select(FIPS, Tract, Imprisonment_Rate, pctWhite, pctBlack)
+
+MDw <- MDw[order(-MDw$Imprisonment_Rate),]
+
+MDw %>% 
+  head(8) %>% 
+  kbl(col.names = c("FIPS",
+                    "Tract",
+                    "Imprisonment Rate",
+                    "% White",
+                    "% Black"),
+      digits = 1,
+      align = 'c') %>%
+  kable_classic(full_width = F, font_size = 13, html_font = "Cambria") %>% 
+  row_spec(c(2,3,6,8), background = "#FFD1F9")
+
+MDb <- MD %>% 
+  filter(black == 1,
+         Imprisonment_Rate > 1000) %>% 
+  select(FIPS, Tract, Imprisonment_Rate, pctWhite, pctBlack)
+
 
 ```
 
-```{r histogramFacilities, include = TRUE, fig.align='center', fig.cap="Distribution of Inpatient Facilities"}
-
-Facilities <- Facilities %>% 
-  mutate(inpatient_cat = factor(Setting_Inpatient,
-                                labels = c("No Inpatient",
-                                           "Inpatient")), 
-         crisis_cat = factor(Emer_CrisisIntervention,
-                             labels = c("No Crisis Intervention",
-                                        "Crisis Intervention")),
-         walkin_cat = factor(Emer_Walkins,
-                             labels = c("No Walk-ins Accepted",
-                                        "Walk-ins Accepted")),
-         payassist_cat = factor(PaymentAssist_Assistance,
-                                labels = c("No Payment Assistance",
-                                           "Payment Assistance")))
-
-Facilities %>%
-  filter(Setting_Inpatient == 1) %>% 
-  ggplot(aes(walkin_cat, fill = payassist_cat)) +
-    geom_bar() +
-    facet_wrap(vars(crisis_cat)) +
-    scale_fill_manual(values = c("lightblue","darkblue"), ) +
-    scale_x_discrete(expand = expansion(mult = 0.01, add = 0)) +
-    scale_y_continuous(breaks = c(2,4,6,8,10)) +
-    labs(x = NULL,
-         y = "Number of Facilities",
-         fill = NULL) +
-    theme_light() +
-    theme(legend.position = "bottom", 
-          panel.grid.major.x = element_line(color = "white"))
-    
-```
-
-*Run at least one regression and output the results in a table. Describe the results.*
-
-```{r regressionMD, include = TRUE, fig.align='center'}
+```{r regressionMD, include = TRUE}
+#| label: tbl-regress1
+#| tbl-cap: "Imprisonment and Key Characteristics: Maryland" 
+#| tbl-align: 'center'
 
 modelIncome <- lm(Imprisonment_Rate ~ IncomeMedian1000,
                   data = MD)
 modelBlack <- lm(Imprisonment_Rate ~ pctBlack,
                  data = MD)
-modelEduc <- lm(Imprisonment_Rate ~ pctBachelorsUp,
+modelIB <- lm(Imprisonment_Rate ~ IncomeMedian1000 + pctBlack,
                 data = MD)
-modelUnemp <- lm(Imprisonment_Rate ~ UnempRate16,
-                 data = MD)
 modelMD <- lm(Imprisonment_Rate ~ IncomeMedian1000 + pctBlack + 
               pctBachelorsUp + UnempRate16,
                   data = MD)
 
 my_gof <- tribble(
   ~raw, ~clean, ~fmt,
-  "nobs", "N", 0,
-  "r.squared", "R2", 2)
+  "nobs", "N", 0)
 
 notes <- c("t statistics in parentheses",
            "(+ p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001)")
 
-regressMD <- modelsummary(list("Median Income" = modelIncome,
-                  "% Black" = modelBlack,
-                  "% w/ Degree" = modelEduc,
-                  "Unemployment" = modelUnemp,
-                  "All" = modelMD),
+regressMD <- modelsummary(list("Model 1" = modelIncome,
+                               "Model 2" = modelBlack,
+                               "Model 3" = modelIB,
+                               "All" = modelMD),
              coef_rename = c(IncomeMedian1000 = "Median Income",
                              pctBlack = "% Black",
                              pctBachelorsUp = "% w/ Degree",
@@ -494,48 +502,53 @@ regressMD <- modelsummary(list("Median Income" = modelIncome,
              estimate = "{estimate}{stars}",
              statistic = "statistic",
              fmt =  2,
-             gof_map = my_gof,
-             title = "Demographics Regression: Maryland") %>% 
-  row_spec(c(1,3,5,7,9,11), background = "#f7fabe") %>% 
+             gof_map = my_gof) %>% 
+  row_spec(c(1,3,5,7,9), background = "#BB98F5") %>%
   column_spec(1, width = "7em") %>%
-  column_spec(2:6, width = "4.5em") %>%
+  column_spec(2:5, width = "5em") %>%
   footnote(general = notes, fixed_small_size = TRUE, footnote_as_chunk = TRUE)
 
 regressMD %>% 
-  kable_styling(font_size = 10)
+  kable_classic(full_width = F, 
+                html_font = "Cambria")
 
 ```
 
-```{r regressionNOBmore, include = TRUE, fig.align='center'}
+Expectedly, the common indicators of inequality have a significant relationship with imprisonment rates. Median income, percentage of Black people in the population, percentage of the population with at least a bachelor’s degree, and the unemployment rate are all strongly and significantly related to high imprisonment. As educational attainment and income rise, the expected imprisonment rate falls, and as the percentage of the population that is Black and the unemployment rate rises, so does the expected imprisonment rate. Even when controlling for all of these factors, each has a significant correlation with the rate of imprisonment (see @tbl-regress1).
 
-NOBmore <- MD %>% 
-  filter(County != "Baltimore City") %>% 
+```{r regressionMDrural, include = TRUE}
+#| label: tbl-regress2
+#| tbl-cap: "Imprisonment and Key Characteristics: Rural Maryland" 
+#| tbl-align: 'center'
+
+MDrural <- MD %>% 
+  filter(pctRural != 0) %>% 
+  filter(Imprisonment_Rate < 2000) %>% 
   select(FIPS, Tract, County, Imprisonment_Rate, Total_Pop, IncomeMedian,
          IncomeMedian1000, pctWhite, pctBlack, pctBachelorsUp, 
          pctUnderPoverty, pctOwner, pctRenter, UnempRate16,
+         white, black, white_cat, black_cat,
          MHF_miles, Total_TravelTime_MHF, Driving_Miles_MHF,
          Inpatient_miles, Total_TravelTime, Driving_Miles,
          Crisis_miles, Total_TravelTime_Crisis, Driving_Miles_Crisis,
          Walkin_miles, Total_TravelTime_Walkin, Driving_Miles_Walkin,
-         IH_Emer_CrisisIntervention, IH_Emer_Walkins)
+         IH_Emer_CrisisIntervention, IH_Emer_Walkins, pctRural,
+         Crisis_IH_PaymentAssist_Assistance, crisis, crisis_pay)
 
-modelIncomeNOBmore <- lm(Imprisonment_Rate ~ IncomeMedian1000,
-                         data = NOBmore)
-modelBlackNOBmore <- lm(Imprisonment_Rate ~ pctBlack,
-                        data = NOBmore)
-modelEducNOBmore <- lm(Imprisonment_Rate ~ pctBachelorsUp,
-                       data = NOBmore)
-modelUnempNOBmore <- lm(Imprisonment_Rate ~ UnempRate16,
-                        data = NOBmore)
-modelNOBmore <- lm(Imprisonment_Rate ~ IncomeMedian1000 + pctBlack + 
-                   pctBachelorsUp + UnempRate16,
-                   data = NOBmore)
+modelIncomeMDrural <- lm(Imprisonment_Rate ~ IncomeMedian1000,
+                         data = MDrural)
+modelBlackMDrural <- lm(Imprisonment_Rate ~ pctBlack,
+                        data = MDrural)
+modelIBMDrural <- lm(Imprisonment_Rate ~ IncomeMedian1000 + pctBlack,
+                data = MDrural)
+modelMDrural <- lm(Imprisonment_Rate ~ IncomeMedian1000 + pctBlack + 
+              pctBachelorsUp + UnempRate16,
+                  data = MDrural)
 
-regressNOBmore <- modelsummary(list("Median Income" = modelIncomeNOBmore,
-                  "% Black" = modelBlackNOBmore,
-                  "% w/ Degree" = modelEducNOBmore,
-                  "Unemployment" = modelUnempNOBmore,
-                  "All" = modelNOBmore),
+regressMDrural <- modelsummary(list("Model 1" = modelIncomeMDrural,
+                                    "Model 2" = modelBlackMDrural,
+                                    "Model 3" = modelIBMDrural,
+                                    "All" = modelMDrural),
              coef_rename = c(IncomeMedian1000 = "Median Income",
                              pctBlack = "% Black",
                              pctBachelorsUp = "% w/ Degree",
@@ -545,37 +558,47 @@ regressNOBmore <- modelsummary(list("Median Income" = modelIncomeNOBmore,
              estimate = "{estimate}{stars}",
              statistic = "statistic",
              fmt =  2,
-             gof_map = my_gof,
-             title = "Demographics Regression: Excluding Baltimore City") %>% 
-  row_spec(c(1,3,5,7,9,11), background = "#f7fabe") %>% 
+             gof_map = my_gof) %>% 
+  row_spec(c(1,3,5,7,9), background = "#BB98F5") %>% 
   column_spec(1, width = "7em") %>%
-  column_spec(2:6, width = "4.5em") %>%
+  column_spec(2:5, width = "5em") %>%
   footnote(general = notes, fixed_small_size = TRUE, footnote_as_chunk = TRUE)
 
-regressNOBmore %>% 
-  kable_styling(font_size = 10)
+regressMDrural %>% 
+  kable_classic(full_width = F, 
+                html_font = "Cambria")
 
 ```
 
-```{r regressionFacilities, include = TRUE, fig.align='center'}
+Since Maryland does contain at least part of two major metropolitan areas, separating out the rural areas can provide insights into how relationships might change outside the city and how to plan and implement policies that target the needs of that type of community. However, @tbl-regress2 shows that the same tract characteristics are still significantly related to imprisonment rates, but with slightly lower numbers.
 
-modelMHF <- lm(Imprisonment_Rate ~ Driving_Miles_MHF,
-               data = MD)
-modelIH <- lm(Imprisonment_Rate ~ Driving_Miles,
-              data = MD)
-modelCrisis <- lm(Imprisonment_Rate ~ Driving_Miles_Crisis,
-                  data = MD)
-modelWalkin <- lm(Imprisonment_Rate ~ Driving_Miles_Walkin,
-                  data = MD)
+```{r regressionFacilities, include = TRUE}
+#| label: tbl-regress3
+#| tbl-cap: "Distance to Mental Health Facilities (in Miles)" 
+#| tbl-align: 'center'
+
 modelall <- lm(Imprisonment_Rate ~ Driving_Miles_MHF + Driving_Miles + 
                Driving_Miles_Crisis + Driving_Miles_Walkin,
                data = MD)
 
-regressDistance <- modelsummary(list("Mental Health Facility" = modelMHF,
-                  "Inpatient Facility" = modelIH,
-                  "Inpatient with Crisis Intervention" = modelCrisis,
-                  "Inpatient accepting Walk-ins" = modelWalkin,
-                  "All" = modelall),
+modelMHFMDrural <- lm(Imprisonment_Rate ~ Driving_Miles_MHF,
+                      data = MDrural)
+modelIHMDrural <- lm(Imprisonment_Rate ~ Driving_Miles,
+                     data = MDrural)
+modelCrisisMDrural <- lm(Imprisonment_Rate ~ Driving_Miles_Crisis,
+                         data = MDrural)
+modelWalkinMDrural <- lm(Imprisonment_Rate ~ Driving_Miles_Walkin,
+                         data = MDrural)
+modelallMDrural <- lm(Imprisonment_Rate ~ Driving_Miles_MHF + Driving_Miles + 
+                      Driving_Miles_Crisis + Driving_Miles_Walkin,
+                      data = MDrural)
+
+regressDistanceMDrural <- modelsummary(list("All Maryland" = modelall,
+                                            "Rural Model 1" = modelMHFMDrural,
+                                            "Rural Model 2" = modelIHMDrural,
+                                            "Rural Model 3" = modelCrisisMDrural,
+                                            "Rural Model 4" = modelWalkinMDrural,
+                                            "All Rural Models" = modelallMDrural),
              coef_rename = c(Driving_Miles_MHF = "Mental Health Facility",
                              Driving_Miles = "Inpatient Facility",
                              Driving_Miles_Crisis = "Inpatient with Crisis Intervention",
@@ -586,77 +609,41 @@ regressDistance <- modelsummary(list("Mental Health Facility" = modelMHF,
              fmt =  2,
              gof_map = my_gof,
              title = "Distance to Mental Health Facilities (in Miles)") %>% 
-  row_spec(c(1,3,5,7,9,11), background = "#f7fabe") %>% 
+  row_spec(c(1,3,5,9), background = "#BB98F5") %>% 
+  row_spec(7, background = "#F4A5FA") %>% 
   column_spec(1, width = "9.4em") %>%
-  column_spec(2:3, width = "4.5em") %>%
-  column_spec(4:5, width = "5.35em") %>%
-  column_spec(6, width = "4.5em") %>%
+  column_spec(2:7, width = "3.5em") %>%
   footnote(general = notes, fixed_small_size = TRUE, footnote_as_chunk = TRUE)
 
-regressDistance %>% 
-  kable_styling(font_size = 10)
+regressDistanceMDrural %>% 
+  kable_classic(full_width = F, 
+                html_font = "Cambria")
 
 ```
 
-```{r regressionFacilitiesNOBmore, include = TRUE, fig.align='center'}
+The crucial addition to this collection of census tract characteristics is the proximity to mental health facilities. As discussed earlier, access to mental health care, and specifically inpatient care when someone is in crisis, is not only an alternative to imprisonment, it may even prevent future harm and repair issues that can lead to criminal behavior. @tbl-regress3 shows little or even the opposite effect overall, but by isolating rural areas the relationship between distance and imprisonment is significant and positive, especially for inpatient facilities with crisis intervention or accepting walk-ins. 
 
-modelMHFNOBmore <- lm(Imprisonment_Rate ~ Driving_Miles_MHF,
-                      data = NOBmore)
-modelIHNOBmore <- lm(Imprisonment_Rate ~ Driving_Miles,
-                     data = NOBmore)
-modelCrisisNOBmore <- lm(Imprisonment_Rate ~ Driving_Miles_Crisis,
-                         data = NOBmore)
-modelWalkinNOBmore <- lm(Imprisonment_Rate ~ Driving_Miles_Walkin,
-                         data = NOBmore)
-modelallNOBmore <- lm(Imprisonment_Rate ~ Driving_Miles_MHF + Driving_Miles + 
-                      Driving_Miles_Crisis + Driving_Miles_Walkin,
-                      data = NOBmore)
-
-regressDistanceNOBmore <- modelsummary(list("Mental Health Facility" = modelMHFNOBmore,
-                                            "Inpatient Facility" = modelIHNOBmore,
-                                            "Inpatient with Crisis Intervention" = modelCrisisNOBmore,
-                                            "Inpatient accepting Walk-ins" = modelWalkinNOBmore,
-                                            "All" = modelallNOBmore),
-             coef_rename = c(Driving_Miles_MHF = "Mental Health Facility",
-                             Driving_Miles = "Inpatient Facility",
-                             Driving_Miles_Crisis = "Inpatient with Crisis Intervention",
-                             Driving_Miles_Walkin = "Inpatient accepting Walk-ins"),
-             output = "kableExtra",
-             estimate = "{estimate}{stars}",
-             statistic = "statistic",
-             fmt =  2,
-             gof_map = my_gof,
-             title = "Distance to Mental Health Facilities (in Miles): Excluding Baltimore City") %>% 
-  row_spec(c(1,3,5,7,9,11), background = "#f7fabe") %>% 
-  column_spec(1, width = "9.4em") %>%
-  column_spec(2:3, width = "4.5em") %>%
-  column_spec(4:5, width = "5.35em") %>%
-  column_spec(6, width = "4.5em") %>%
-  footnote(general = notes, fixed_small_size = TRUE, footnote_as_chunk = TRUE)
-
-regressDistanceNOBmore %>% 
-  kable_styling(font_size = 10)
-
-```
-
-```{r allregression, include = TRUE, fig.align='center'}
+```{r allregression, include = TRUE}
+#| label: tbl-regressALL
+#| tbl-cap: "All Models" 
+#| tbl-align: 'center'
 
 allinonemodel <- lm(Imprisonment_Rate ~ IncomeMedian1000 + pctBlack + 
                     pctBachelorsUp + UnempRate16 + Driving_Miles_MHF + 
                     Driving_Miles + Driving_Miles_Crisis + Driving_Miles_Walkin,
                     data = MD)
 
-allinonemodelNOBmore <- lm(Imprisonment_Rate ~ IncomeMedian1000 + pctBlack + 
+allinonemodelMDrural <- lm(Imprisonment_Rate ~ IncomeMedian1000 + pctBlack + 
                            pctBachelorsUp + UnempRate16 + Driving_Miles_MHF + 
                            Driving_Miles + Driving_Miles_Crisis + Driving_Miles_Walkin,
-                           data = NOBmore)
+                           data = MDrural)
 
 allinone <- modelsummary(list("Maryland" = modelMD,
-                  "Maryland w/o Baltimore" = modelNOBmore,
-                  "Distance" = modelall,
-                  "Distance w/o Baltimore" = modelallNOBmore,
-                  "All Factors" = allinonemodel,
-                  "All Factors w/o Baltimore" = allinonemodelNOBmore),
+                              "Rural" = modelMDrural,
+                              "Distance" = modelall,
+                              "Distance Rural" = modelallMDrural,
+                              "All Factors" = allinonemodel,
+                              "All Rural" = allinonemodelMDrural),
              coef_rename = c(IncomeMedian1000 = "Median Income",
                              pctBlack = "% Black",
                              pctBachelorsUp = "% w/ Degree",
@@ -670,198 +657,404 @@ allinone <- modelsummary(list("Maryland" = modelMD,
              statistic = "statistic",
              fmt =  2,
              gof_map = my_gof,
-             title = "All Regressions") %>% 
-  row_spec(c(1,3,5,7,9,11,13,15,17,19), 
-           background = "#f7fabe") %>% 
-  column_spec(1, width = "10em") %>%
+             title = "") %>% 
+  row_spec(c(1,7,9,11,13,17), background = "#BB98F5") %>% 
+  row_spec(c(3,5,15), background = "#F4A5FA") %>% 
+  column_spec(1, width = "11em") %>%
   column_spec(c(2:7), width = "4.35em") %>%
   footnote(general = notes, fixed_small_size = TRUE, footnote_as_chunk = TRUE)
 
 allinone %>% 
-  kable_styling(font_size = 10)
+  kable_classic(full_width = F, 
+                html_font = "Cambria")
 
 ```
 
-*What are the key relationships/associations among various variables that you can identify in your dataset?*
+Looking at all the models side-by-side in @tbl-regressALL, even controlling for the tract characteristics from @tbl-regress1 and @tbl-regress2, distance to facilities with crisis intervention has a significant relationship with imprisonment. Without accessibility to emergency mental health treatment, people in crisis are more likely to end up arrested or worse if police are the only are the only option to deescalate the situation.
 
-*What questions can you answer with your dataset?*
+```{r plotRural, include = TRUE, fig.align='center'}
+#| label: fig-rural
+#| fig-cap: "Distance to Crisis Intervention from Rural Tracts" 
+#| fig-align: 'center'
 
-*Do you find strong correlations between variables that you expected or did not expect?*
+crisis_dif <- t.test(Imprisonment_Rate ~ crisis, data = MDrural)
 
-*You should present some of these results in tables and figures.*
+formula <- y ~ x
+ip <- MDrural %>%
+  ggplot(aes(Total_TravelTime, Imprisonment_Rate, color = crisis, fill = crisis)) +
+    geom_point(pch = 21, size = 3.5, alpha = .75) +
+    geom_smooth(method = "lm", formula = formula) +
+    geom_text(aes(x = 75, y = 550, 
+                  label = my_mean(crisis_dif$estimate[1])), 
+              color = "#8CE0FF", size = 2.5,) +
+    geom_text(aes(x = 75, y = 485, 
+                  label = my_mean(crisis_dif$estimate[2])), 
+              color = "#FF87D1", size = 2.5) +
+    scale_fill_manual(values = c("#8CE0FF", "#FF87D1"),
+                      labels = str_wrap(c("No Crisis Intervention",
+                                          "Crisis Intervention"), width = 10)) +
+    scale_color_manual(values = c("#4FADD0","#DE4FA6"),
+                      labels = str_wrap(c("No Crisis Intervention",
+                                          "Crisis Intervention"), width = 10)) +
+    scale_y_continuous(labels = label_comma(), 
+                       expand = expansion(mult = 0.01, add = 0)) +
+    scale_x_continuous(labels = label_comma(suffix = " min"), 
+                       breaks = seq(30,200,30),
+                       expand = expansion(mult = 0.01, add = 0)) +
+    labs(x = "Travel Time to Nearest Inpatient Facility",
+         y = "Imprisonment Rate per 100,000",
+         fill = NULL,
+         color = NULL,
+         title = "Nearest Inpatient",
+         caption = " ") +
+    theme_light() +
+    theme(panel.border = element_blank(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.major.y = element_line(color = "#FFD1F9"),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          text = element_text(family = "serif"),
+          strip.text = element_text(color = "#310873", 
+                                    face = "bold", 
+                                    family = "serif"),
+          strip.background = element_blank(),
+          strip.placement = "outside",
+          axis.text = element_text(color = "#310873"),
+          axis.title.y = element_text(size = 10, 
+                                      color = "#310873"),
+          axis.title.x = element_text(size = 9.5, 
+                                      color = "#310873"),
+          axis.ticks = element_blank(),
+          legend.position = "bottom",
+          legend.text = element_text(color = "#310873"))
+
+cr <- MDrural %>%
+  ggplot(aes(Total_TravelTime_Crisis, Imprisonment_Rate, 
+             color = crisis_pay, fill = crisis_pay)) +
+    geom_point(pch = 21, size = 3.5, alpha = .75) +
+    geom_smooth(method = "lm", formula = formula) +
+    stat_poly_eq(aes(label = paste(..rr.label..)), label.x = .83, vstep = -1,
+                 label.y = "bottom", formula = formula, parse = TRUE, size = 2.5) +
+    scale_fill_manual(values = c("#8CE0FF", "#FF87D1"),
+                      labels = str_wrap(c("No Payment Assistance",
+                                          "Payment Assistance"), width = 10)) +
+    scale_color_manual(values = c("#4FADD0","#DE4FA6"), 
+                       labels = str_wrap(c("No Payment Assistance",
+                                           "Payment Assistance"), width = 10)) +
+    scale_y_continuous(labels = label_comma(), 
+                       expand = expansion(mult = 0.01, add = 0)) +
+    scale_x_continuous(labels = label_comma(suffix = " min"), 
+                       breaks = seq(30,200,30),
+                       expand = expansion(mult = 0.01, add = 0)) +
+    labs(x = "Travel Time to Nearest Inpatient Facility w/ Crisis Intervention",
+         y = "Imprisonment Rate per 100,000",
+         fill = NULL,
+         color = NULL,
+         title = "Nearest Crisis Intervention",
+         caption = "N = 505") +
+    theme_light() +
+    theme(panel.border = element_blank(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.major.y = element_line(color = "#FFD1F9"),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          text = element_text(family = "serif"),
+          strip.text = element_text(color = "#310873", 
+                                    face = "bold", 
+                                    family = "serif"),
+          strip.background = element_blank(),
+          strip.placement = "outside",
+          axis.text = element_text(color = "#310873"),
+          axis.text.y = element_blank(),
+          axis.title.y = element_blank(),
+          axis.title.x = element_text(size = 9.5, 
+                                      color = "#310873"),
+          axis.ticks = element_blank(),
+          legend.position = "bottom",
+          legend.text = element_text(color = "#310873"))
+
+ip + cr
+
+# labels = c("Nearest Inpatient", "Nearest Crisis Intervention"), 
+#           label_size = 12, label_fontfamily = "serif",
+#           scale = .92, hjust = 0.4, label_x = 0.5, rel_widths = c(.8, 1.2))
+
+```
+
+Because urban tracts are overrepresented and more likely to be spatially close to a facility, the relationship is not clear, However, this does not account for capacity at urban facilities. According to the *National Mental Health Services Survey (N-MHSS): 2020*, the average capacity of facilities across Maryland is 44 beds for inpatient clients (slightly lower than the national average of 49) [@samhsaNationalMentalHealth2020]. Even assuming the facilities in Baltimore have a higher capacity than average, it is unlikely the four inpatient facilities within Baltimore City are equipped to adequately provide care to the city’s nearly half a million population. The map from @fig-map1 highlights that Baltimore has the highest concentration of high imprisonment rates in Maryland, but few facilities offering inpatient care. 
 
 ## Race and Income
 
-Expected results. Strong correlation between both race and income with imprisonment as well as a strong correlation between race and income themselves. Income as a factor in rural areas that are not majority white and how economic indicators are related to imprisonment and criminal behavior.
+Expected results. A strong correlation between both race and income with imprisonment as well as a strong correlation between race and income themselves. Income as a factor in rural areas that are not majority white and how economic indicators are related to imprisonment and criminal behavior.
 
-```{r Race, include = TRUE, fig.align='center', fig.cap="Income, Race, and Imprisonment Rate"}
+```{r Race, include = TRUE}
+#| label: fig-race1
+#| fig-cap: "Income, Race, and Imprisonment Rate" 
+#| fig-align: 'center'
+
+
+mediannotblack <- label_number(accuracy = 1, 
+                                prefix = "Not Majority Black Median $", 
+                                big.mark = ",")
+medianblack <- label_number(accuracy = 1, 
+                            prefix = "Majority Black Median $", 
+                            big.mark = ",")
+meannotblack <- label_number(accuracy = 1, 
+                              prefix = "Not Majority Black Mean ", 
+                              big.mark = ",")
+meanblack <- label_number(accuracy = 1, 
+                          prefix = "Majority Black Mean ", 
+                          big.mark = ",")
+
+mdsumb <- MD %>% 
+  group_by(black_cat) %>% 
+  summarise(bmedian = median(IncomeMedian),
+            bmean = mean(Imprisonment_Rate))
 
 MD %>% 
   drop_na(IncomeMedian, pctBlack) %>% 
   ggplot(aes(IncomeMedian, Imprisonment_Rate, color = pctBlack)) +
-    geom_point() + 
-    geom_smooth(color = "black") +
+    geom_point(size = 3.5, alpha = .75) + 
+    geom_vline(xintercept = mdsumb$bmedian, size = 1,
+               color = ifelse(mdsumb$black_cat == "Majority Black", 
+                              "#321A61", "#C8AFFA")) +
+    geom_hline(yintercept = mdsumb$bmean, size = 1,
+               color = ifelse(mdsumb$black_cat == "Majority Black", 
+                              "#321A61", "#C8AFFA")) +
+    annotate(geom = "text", 
+             x = mdsumb$bmedian - 3500, 
+             y = ifelse(mdsumb$black_cat == "Majority Black", 2700, 2550),
+             label = ifelse(mdsumb$black_cat == "Majority Black", 
+                                 medianblack(mdsumb$bmedian), mediannotblack(mdsumb$bmedian)), 
+             color = ifelse(mdsumb$black_cat == "Majority Black", 
+                            "#321A61", "#A584FA"),
+             angle = 90) +
+    annotate(geom = "text", 
+             x = ifelse(mdsumb$black_cat == "Majority Black", 220500, 215300),
+             y = mdsumb$bmean + 100, 
+             label = ifelse(mdsumb$black_cat == "Majority Black", 
+                                 meanblack(mdsumb$bmean), meannotblack(mdsumb$bmean)), 
+             color = ifelse(mdsumb$black_cat == "Majority Black", 
+                            "#321A61", "#A584FA")) +
     labs(x = "Median Income by Census Tract",
          y = "Imprisonment Rate (per 100,000)",
-         title = "Income and Imprisonment Rate",
-         color = "% Black") +
-    scale_x_continuous(labels = dollar) +
-    scale_y_continuous(labels = comma) +
-    scale_color_distiller(type = "seq", 
-                          palette = "Purples",
-                          direction = 1,
-                          labels = label_percent(scale = 1)) +
+         color = "% Black",
+         caption = "N = 1455") +
+    scale_x_continuous(labels = dollar, 
+                       expand = expansion(mult = 0.01, add = 0)) +
+    scale_y_continuous(labels = comma, 
+                       expand = expansion(mult = 0.01, add = 0)) +
+    scale_color_gradient(guide = guide_colorsteps(),
+                         low = "#C8AFFA",
+                         high = "#321A61",
+                         labels = label_percent(scale = 1)) +
     theme_light() +
-    theme(legend.position = "bottom",
-          panel.grid.major.x = element_line(color = "white"),
-          panel.grid.minor.x = element_line(color = "white"),
-          panel.grid.major.y = element_line(color = "lightgrey"),
-          panel.grid.minor.y = element_line(color = "white"))
+    theme(panel.border = element_blank(),
+          legend.position = "bottom",
+          legend.text = element_text(color = "#310873"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.y = element_line(color = "#C8AFFA"),
+          panel.grid.minor.y = element_blank(),
+          text = element_text(family = "serif"),
+          axis.text = element_text(color = "#310873"),
+          axis.title.y = element_text(color = "#310873"),
+          axis.title.x = element_text(color = "#310873"),
+          axis.ticks = element_blank())
 
 
 ```
 
-```{r NOBmoreRace, include = TRUE, fig.align='center', fig.cap="Income, Race, and Imprisonment Rate: Excluding Baltimore"}
+```{r map2, include = TRUE, fig.align='center'}
+#| label: fig-map2
+#| fig-cap: "Imprisonment Rates and Black Communities" 
+#| fig-align: 'center'
 
-NOBmore %>% 
-  ggplot(aes(IncomeMedian, Imprisonment_Rate, color = pctBlack)) +
-    geom_point() + 
-    geom_smooth(color = "black") +
-    labs(x = "Median Income by Census Tract",
-         y = "Imprisonment Rate (per 100,000)",
-         title = "Income and Imprisonment Rate",
-         color = "% Black") +
-    scale_x_continuous(labels = dollar) +
-    scale_y_continuous(labels = comma) +
-    scale_color_distiller(type = "seq", 
-                          palette = "Purples",
-                          direction = 1,
-                          labels = label_percent(scale = 1)) +
-    theme_light() +
-    theme(legend.position = "bottom",
-          panel.grid.major.x = element_line(color = "white"),
-          panel.grid.minor.x = element_line(color = "white"),
-          panel.grid.major.y = element_line(color = "lightgrey"),
-          panel.grid.minor.y = element_line(color = "white"))
-
-```
-
-## Unemployment and Education
-
-Expected results, however, these indicators are targetable. Employment and educational opportunities can be influenced by policy to target these communities to reduce the incentive and necessity of criminal behavior and give surviors of violence the opportunity to escape, heal, and end the cycle of violence.
-
-```{r Unemployment, include = TRUE, fig.align='center', fig.cap="Income, Unemployment, and Imprisonment Rate"}
-
-MD %>% 
-  drop_na(IncomeMedian, UnempRate16) %>% 
-  mutate(UnempRate16 = UnempRate16 / 100) %>% 
-  ggplot(aes(IncomeMedian, Imprisonment_Rate, color = UnempRate16)) +
-    geom_point() + 
-    labs(x = "Median Income by Census Tract",
-         y = "Imprisonment Rate (per 100,000)",
-         title = "Income and Imprisonment Rate",
-         color = "Unemployment") +
-    scale_x_continuous(labels = dollar) +
-    scale_y_continuous(labels = comma) +
-    scale_color_distiller(type = "seq", 
-                          palette = "Greens",
-                          direction = 1,
-                          labels = label_percent(scale = 100)) +
-    theme_light() +
-    theme(legend.position = "right",
-          panel.grid.major.x = element_line(color = "white"),
-          panel.grid.minor.x = element_line(color = "white"),
-          panel.grid.major.y = element_line(color = "lightgrey"),
-          panel.grid.minor.y = element_line(color = "white"))
-
-```
-
-```{r Education, include = TRUE, fig.align='center', fig.cap="Income, Education, and Imprisonment Rate"}
-
-MD %>% 
-  drop_na(IncomeMedian, pctBachelorsUp) %>% 
-  ggplot(aes(IncomeMedian, Imprisonment_Rate, color = pctBachelorsUp)) +
-    geom_point() + 
-    labs(x = "Median Income by Census Tract",
-         y = "Imprisonment Rate (per 100,000)",
-         title = "Income and Imprisonment Rate",
-         color = "% w/ Degree") +
-    scale_x_continuous(labels = dollar) +
-    scale_y_continuous(labels = comma) +
-    scale_color_distiller(type = "seq", 
-                          palette = "Blues",
-                          direction = 1,
-                          labels = label_percent(scale = 1)) +
-    theme_light() +
-    theme(legend.position = "right",
-          panel.grid.major.x = element_line(color = "white"),
-          panel.grid.minor.x = element_line(color = "white"),
-          panel.grid.major.y = element_line(color = "lightgrey"),
-          panel.grid.minor.y = element_line(color = "white"))
+knitr::include_graphics("Black_wide.png")
 
 ```
 
 ## Access to Mental Health Care
 
-While only significant when excluding Baltimore city, proximity to mental health care can not only prevent harmful criminal behavior, it can serve as alternative for dangerous situations before they become criminal. Mental health accessibility is also important for formerly incarcerated people returning to their communities to heal from the trauma of imprisonment and become capable of reintegrating and supporting their community.
+While only significant when excluding Baltimore City, proximity to mental health care can not only prevent harmful criminal behavior, it can serve as an alternative for dangerous situations before they become criminal. Mental health accessibility is also important for formerly incarcerated people returning to their communities to heal from the trauma of imprisonment and become capable of reintegrating and supporting their community.
 
-While Baltimore has the highest concentration of imprisonment and proximity to inpatient mental health facilities, there are only four facilities in Baltimore city. Though the exact capacity of these facilities is unknown, the average inpatient capacity for inpatient facilities is \[xxx\], which is not likely to be sufficient to provide the necessary services for all those in Baltimore who would benefit. In addition to other barriers, such as health insurance coverage and transportation to facilities, more research is needed to assess the most effective expansion of service to target the neighborhood most in need.
+While Baltimore has the highest concentration of imprisonment and proximity to inpatient mental health facilities, there are only four facilities in Baltimore City. Though the exact capacity of these facilities is unknown, the average inpatient capacity for inpatient facilities is \[xxx\], which is not likely to be sufficient to provide the necessary services for all those in Baltimore who would benefit. In addition to other barriers, such as health insurance coverage and transportation to facilities, more research is needed to assess the most effective expansion of service to target the neighborhood most in need.
 
-```{r map2, include = TRUE, fig.align='center', fig.cap="Map 2: Distance to Inpatient Facilities with Crisis Intervention"}
+```{r map3, include = TRUE, fig.align='center'}
+#| label: fig-map3
+#| fig-cap: "Distance to Inpatient Facilities with Crisis Intervention" 
+#| fig-align: 'center'
 
-knitr::include_graphics("Map2_CrisisFull.png")
+knitr::include_graphics("Crisis_wide.png")
 
 ```
 
-```{r MHF, include = TRUE, fig.align='center', fig.cap="Inpatient Accessibility"}
+```{r MHF, include = TRUE, fig.align='center'}
+#| label: fig-MHF
+#| fig-cap: "Inpatient Accessibility" 
+#| fig-align: 'center'
 
-MD %>%  
-  mutate(IH_Emer_Crisis_cat = factor(IH_Emer_CrisisIntervention, 
-                                     labels = c("No Crisis Intervention", 
-                                                "Crisis Intervention"))) %>% 
-  ggplot(aes(Driving_Miles, Imprisonment_Rate)) +
-    geom_point(aes(fill = IH_Emer_Crisis_cat), color = "navy", pch=21, size=2) + 
-    geom_smooth(color = "black") +
+md_sum <- MD %>% 
+  group_by(white_cat, crisis) %>% 
+  summarise(imp = mean(Imprisonment_Rate))
+
+
+mhf <- MD %>%  
+  ggplot(aes(Driving_Miles, Imprisonment_Rate, color = crisis, fill = crisis)) +
+    geom_point(aes(shape = white_cat), size = 4) + 
+    geom_hline(yintercept = md_sum$imp, 
+               linewidth = 1.5,
+               color = case_when(md_sum$crisis == "No Crisis Intervention" & 
+                                   md_sum$white_cat == "Not Majority White" ~ "#8CE0FF",
+                                 md_sum$crisis == "Crisis Intervention" & 
+                                   md_sum$white_cat == "Not Majority White" ~ "#FF87D1",
+                                 md_sum$crisis == "No Crisis Intervention" & 
+                                   md_sum$white_cat == "Majority White" ~ "#4FADD0",
+                                 md_sum$crisis == "Crisis Intervention" & 
+                                   md_sum$white_cat == "Majority White" ~ "#DE4FA6")) +
+    geom_text(data =  md_sum, 
+              aes(x = 82, 
+                  y = ifelse(md_sum$crisis == "Crisis Intervention" &
+                               md_sum$white_cat == "Majority White", 
+                             md_sum$imp - 100, md_sum$imp + 100),
+                  label = my_mean(md_sum$imp)), 
+                  color = case_when(md_sum$crisis == "No Crisis Intervention" &
+                                      md_sum$white_cat == "Not Majority White" ~ "#8CE0FF",
+                                    md_sum$crisis == "Crisis Intervention" &
+                                      md_sum$white_cat == "Not Majority White" ~ "#FF87D1",
+                                    md_sum$crisis == "No Crisis Intervention" &
+                                      md_sum$white_cat == "Majority White" ~ "#4FADD0",
+                                    md_sum$crisis == "Crisis Intervention" &
+                                      md_sum$white_cat == "Majority White" ~ "#DE4FA6"),
+              size = 3) +
     labs(x = "Driving Miles to Nearest Inpatient Facility",
          y = "Imprisonment Rate (per 100,000)",
-         title = "Inpatient Accessibility",
-         fill = NULL) +
-    scale_x_continuous() +
-    scale_fill_manual(values = c("#F5D7E3","#90FFDC")) +
+         fill = NULL,
+         color = NULL,
+         shape = NULL,
+         title = "All Maryland",
+         caption = "N = 1455") +
+    scale_fill_manual(values = c("#8CE0FF", "#FF87D1"),
+                      labels = str_wrap(c("No Crisis Intervention",
+                                          "Crisis Intervention"), width = 10)) +
+    scale_color_manual(values = c("#4FADD0","#DE4FA6"),
+                      labels = str_wrap(c("No Crisis Intervention",
+                                          "Crisis Intervention"), width = 10)) +
+    scale_y_continuous(labels = label_comma(), 
+                       expand = expansion(mult = 0.01, add = 0)) +
+    scale_x_continuous(labels = label_comma(suffix = " mi"), 
+                       breaks = seq(15,75,15),
+                       limits = c(0,93),
+                       expand = expansion(mult = 0.01, add = 0)) +
+    scale_shape_manual(values = c(21,23), guide = "legend", 
+                       labels = str_wrap(c("Majority White", 
+                                           "Not Majority White"), width = 12)) +
     theme_light() +
-    theme(legend.position = "bottom",
-          panel.grid.major.x = element_line(color = "white"),
-          panel.grid.minor.x = element_line(color = "white"),
-          panel.grid.major.y = element_line(color = "lightgrey"),
-          panel.grid.minor.y = element_line(color = "white"))
+    theme(panel.border = element_blank(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.major.y = element_line(color = "#FFD1F9"),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          text = element_text(family = "serif"),
+          strip.text = element_text(color = "#310873", 
+                                    face = "bold", 
+                                    family = "serif"),
+          strip.background = element_blank(),
+          strip.placement = "outside",
+          axis.text = element_text(color = "#310873"),
+          axis.title.y = element_text(size = 10, 
+                                      color = "#310873"),
+          axis.title.x = element_text(size = 9.5, 
+                                      color = "#310873"),
+          axis.ticks = element_blank(),
+          legend.position = "bottom",
+          legend.text = element_text(color = "#310873"))
 
-```
+rural_sum <- MDrural %>% 
+  group_by(white_cat, crisis) %>% 
+  summarise(imp = mean(Imprisonment_Rate))
 
-```{r MHFNOBmore, include = TRUE, fig.align='center', fig.cap="Inpatient Accessibility: Excluding Baltimore City"}
-
-NOBmore %>%  
-  mutate(IH_Emer_Crisis_cat = factor(IH_Emer_CrisisIntervention, 
-                                     labels = c("No Crisis Intervention", 
-                                                "Crisis Intervention"))) %>% 
-  ggplot(aes(Driving_Miles, Imprisonment_Rate)) +
-    geom_point(aes(fill = IH_Emer_Crisis_cat), color = "navy", pch=21, size=2) + 
-    geom_smooth(color = "black") +
+rmhf <- MDrural %>%  
+  ggplot(aes(Driving_Miles, Imprisonment_Rate, color = crisis, fill = crisis)) +
+    geom_point(aes(shape = white_cat), size = 4) + 
+    geom_hline(yintercept = rural_sum$imp, 
+               linewidth = 1.5,
+               color = case_when(rural_sum$crisis == "No Crisis Intervention" & 
+                                   rural_sum$white_cat == "Not Majority White" ~ "#8CE0FF",
+                                 rural_sum$crisis == "Crisis Intervention" & 
+                                   rural_sum$white_cat == "Not Majority White" ~ "#FF87D1",
+                                 rural_sum$crisis == "No Crisis Intervention" & 
+                                   rural_sum$white_cat == "Majority White" ~ "#4FADD0",
+                                 rural_sum$crisis == "Crisis Intervention" & 
+                                   rural_sum$white_cat == "Majority White" ~ "#DE4FA6")) +
+    geom_text(data =  rural_sum, 
+              aes(x = 82, 
+                  y = ifelse(rural_sum$crisis == "Crisis Intervention" &
+                                      rural_sum$white_cat == "Majority White", 
+                             rural_sum$imp - 25, rural_sum$imp + 32),
+                  label = my_mean(rural_sum$imp)), 
+                  color = case_when(rural_sum$crisis == "No Crisis Intervention" &
+                                      rural_sum$white_cat == "Not Majority White" ~ "#8CE0FF",
+                                    rural_sum$crisis == "Crisis Intervention" &
+                                      rural_sum$white_cat == "Not Majority White" ~ "#FF87D1",
+                                    rural_sum$crisis == "No Crisis Intervention" &
+                                      rural_sum$white_cat == "Majority White" ~ "#4FADD0",
+                                    rural_sum$crisis == "Crisis Intervention" &
+                                      rural_sum$white_cat == "Majority White" ~ "#DE4FA6"),
+              size = 3) +
     labs(x = "Driving Miles to Nearest Inpatient Facility",
          y = "Imprisonment Rate (per 100,000)",
-         title = "Inpatient Accessibility",
-         fill = NULL) +
-    scale_x_continuous() +
-    scale_fill_manual(values = c("#F5D7E3","#90FFDC")) +
+         fill = NULL,
+         color = NULL,
+         shape = NULL,
+         title = "Rural Maryland",
+         caption = "Note: 'Rural Maryland' rescaled to show distribution. N = 505") +
+    scale_fill_manual(values = c("#8CE0FF", "#FF87D1"),
+                      labels = str_wrap(c("No Crisis Intervention",
+                                          "Crisis Intervention"), width = 12)) +
+    scale_color_manual(values = c("#4FADD0", "#DE4FA6"),
+                       labels = str_wrap(c("No Crisis Intervention",
+                                           "Crisis Intervention"), width = 12)) +
+    scale_y_continuous(labels = label_comma(), 
+                       expand = expansion(mult = 0.01, add = 0)) +
+    scale_x_continuous(labels = label_comma(suffix = " mi"), 
+                       breaks = seq(15,75,15),
+                       limits = c(0,93),
+                       expand = expansion(mult = 0.01, add = 0)) +
+    scale_shape_manual(values = c(21,23), guide = "legend", 
+                       labels = str_wrap(c("Majority White", 
+                                           "Not Majority White"), width = 12)) +
     theme_light() +
-    theme(legend.position = "bottom",
-          panel.grid.major.x = element_line(color = "white"),
-          panel.grid.minor.x = element_line(color = "white"),
-          panel.grid.major.y = element_line(color = "lightgrey"),
-          panel.grid.minor.y = element_line(color = "white"))
+    theme(panel.border = element_blank(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.major.y = element_line(color = "#FFD1F9"),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          text = element_text(family = "serif"),
+          strip.text = element_text(color = "#310873", 
+                                    face = "bold", 
+                                    family = "serif"),
+          strip.background = element_blank(),
+          strip.placement = "outside",
+          axis.text = element_text(color = "#310873"),
+          axis.title.y = element_blank(),
+          axis.title.x = element_text(size = 9.5, 
+                                      color = "#310873"),
+          axis.ticks = element_blank(),
+          legend.position = "bottom",
+          legend.text = element_text(color = "#310873"))
+
+# plot_grid(mhf, rmhf, labels = c("All Maryland", "Rural Maryland"), 
+#           label_size = 12, label_fontfamily = "serif",
+#           scale = 1, hjust = 0.4, label_x = 0.5, rel_widths = c(.5, .5))
+
+
+(mhf + rmhf) +
+  plot_layout(guides = "collect") + 
+  plot_annotation() & 
+  theme(legend.position = 'bottom') 
 
 ```
-
-\newpage
 
 # Discussion and Conclusion
 
@@ -888,1340 +1081,6 @@ Funding emergency mental health care to divert people in need of health care awa
 Many violent conflicts require de-escalation and treatment, not confinement.
 
 Funding and supporting mental health care accessibility can enable people to receive the health care and resources they need instead of becoming entrenched in the endless cycle of incarceration and harm from the Prison Industrial Complex and all its extremities.
-
-\newpage
-
-# Appendix
-
-## R Code
-
-```{r code, echo = TRUE, include = TRUE, eval = FALSE}
-
-library(tidyverse)
-library(modelsummary)  
-library(scales)
-library(readr)
-library(tufte)
-library(sf) 
-library(broom)
-library(kableExtra)
-library(tinytex)
-library(mice)
-library(lattice)
-
-## Load Census Data
-GEOGRAPHIC_MOBILITY <- read_csv("data/GEOGRAPHIC_MOBILITY.csv")
-EMPLOYMENT <- read_csv("data/EMPLOYMENT.csv")
-MEDIAN_INCOME <- read_csv("data/MEDIAN_INCOME.csv")
-
-## Load Imprisonment Data
-Imprisonment_rates <- read_csv("data/Imprisonment_rates.csv")
-
-## Extract FIPS codes
-GEOGRAPHIC_MOBILITY$FIPS <- substr(GEOGRAPHIC_MOBILITY$GEO_ID, 
-                                   nchar(GEOGRAPHIC_MOBILITY$GEO_ID) - 10, 
-                                   nchar(GEOGRAPHIC_MOBILITY$GEO_ID))
-
-EMPLOYMENT$FIPS <- substr(EMPLOYMENT$GEO_ID, 
-                          nchar(EMPLOYMENT$GEO_ID) - 10, 
-                          nchar(EMPLOYMENT$GEO_ID))
-
-MEDIAN_INCOME$FIPS <- substr(MEDIAN_INCOME$GEO_ID, 
-                             nchar(MEDIAN_INCOME$GEO_ID) - 10, 
-                             nchar(MEDIAN_INCOME$GEO_ID))
-
-## Joining
-data1 <- merge(Imprisonment_rates, GEOGRAPHIC_MOBILITY, by = "FIPS")
-data1 <- data1 %>% 
-  merge(EMPLOYMENT, by = "FIPS") %>% 
-  merge(MEDIAN_INCOME, by = "FIPS")
-
-## Select Estimates Columns
-data_all <- select(data1, "FIPS", 
-                   "Tract", 
-                   "State_Prison_Num", 
-                   "Census_Pop",	
-                   "Total_Pop",
-                   "Imprisonment_Rate", 
-                   ends_with('E'))
-
-## Renaming
-data_all <- data_all %>% 
-  rename("Total_Pop1" = "S0701_C01_001E",
-         "Total_Pop18_24" = "S0701_C01_004E",
-         "Total_Pop25_34" = "S0701_C01_005E",
-         "Total_Pop35_44" = "S0701_C01_006E",
-         "Total_Pop45_54" = "S0701_C01_007E",
-         "Total_Pop55_64" = "S0701_C01_008E",
-         "Total_Pop65_74" = "S0701_C01_009E",
-         "Total_Pop75" = "S0701_C01_010E",
-         "MedianAge" = "S0701_C01_011E",
-         "Male" = "S0701_C01_012E",
-         "Female" = "S0701_C01_013E",
-         "OneRaceTotal" = "S0701_C01_014E",
-         "White" = "S0701_C01_015E",
-         "Black" = "S0701_C01_016E",
-         "AIAN" = "S0701_C01_017E",
-         "Asian" = "S0701_C01_018E",
-         "NHPI" = "S0701_C01_019E",
-         "Other" = "S0701_C01_020E",
-         "TwoRaces" = "S0701_C01_021E",
-         "Latinx" = "S0701_C01_022E",
-         "WhiteNonLatinx" = "S0701_C01_023E",
-         "Total_Pop25" = "S0701_C01_033E",
-         "NoHS" = "S0701_C01_034E",
-         "HS" = "S0701_C01_035E",
-         "SomeCollege" = "S0701_C01_036E",
-         "Bachelors" = "S0701_C01_037E",
-         "GradAdv" = "S0701_C01_038E",
-         "PovStatusDeterminedTotal" = "S0701_C01_049E",
-         "Under100PovLevel" = "S0701_C01_050E",
-         "100_149PovLevel" = "S0701_C01_051E",
-         "150PlusPovLevel" = "S0701_C01_052E",
-         "Housed" = "S0701_C01_053E",
-         "HousedOwner" = "S0701_C01_054E",
-         "HousedRenter" = "S0701_C01_055E",
-         
-         "UnempRate16" = "S2301_C04_001E",
-         
-         "IncomeMedian" = "S1903_C03_001E",
-         "IncomeMedianWhite" = "S1903_C03_002E",
-         "IncomeMedianBlack" = "S1903_C03_003E")
-
-## Cleaning
-clean <- data_all %>% 
-  select(-grep("_C0", names(data_all)))
-
-clean1 <- clean %>%
-  select(-Tract) %>% 
-  mutate_all(as.numeric)
-
-MD <- clean %>% 
-  select(FIPS, Tract) %>% 
-  merge(clean1, by = "FIPS")
-
-## Extract County Column
-MD$County <- substr(MD$Tract,1,regexpr(",",MD$Tract)-1)
-MD$County <- gsub(" County", "", MD$County)
-
-## Calculate Percentages
-MD_ <- MD %>% 
-  mutate(Total_Pop18 = Total_Pop18_24 + Total_Pop25_34 + 
-           Total_Pop35_44 + Total_Pop45_54 + Total_Pop55_64 + 
-           Total_Pop65_74 + Total_Pop75,
-         pctWhite = (White / OneRaceTotal) * 100, 
-         pctBlack = (Black / OneRaceTotal) * 100, 
-         pctOther = ((AIAN + Asian + NHPI + Other) / OneRaceTotal) * 100,
-         pctNoHS = (NoHS / Total_Pop25) * 100,
-         pctHS = (HS / Total_Pop25) * 100,
-         pctSomeCollege = (SomeCollege / Total_Pop25) * 100,
-         pctBachelors = (Bachelors / Total_Pop25) * 100,
-         pctGradAdv = (GradAdv / Total_Pop25) * 100,
-         pctBachelorsUp = ((Bachelors / Total_Pop25) + (GradAdv / Total_Pop25)) * 100,
-         pctUnderPoverty = (Under100PovLevel / PovStatusDeterminedTotal) * 100,
-         pctOwner = (HousedOwner / Housed) * 100,
-         pctRenter = (HousedRenter / Housed) * 100)
-
-## Print
-# write.csv(MD_, "data/data.csv", row.names=FALSE)
-
-## Manually fix County values in Excel and reload
-MD_ <- read_csv("data/data.csv")
-
-## Save data
-saveRDS(MD_, file = "data/MD_01.RDS")
-
-
-MD_ <- readRDS("data/MD_01.RDS")
-
-## Drop Tracts with a population below 100 to reduce outliers.
-MD <- MD_ %>% 
-  filter(Total_Pop >= 100)
-
-## Select Columns
-MD <- MD %>% 
-  select(FIPS, Tract, County, Imprisonment_Rate, Total_Pop, 
-         IncomeMedian, pctWhite, pctBlack, pctBachelorsUp, 
-         pctUnderPoverty, pctOwner, pctRenter, UnempRate16)
-
-## Aggregate to the County Level
-MD_counties <- MD %>% 
-  select(FIPS, Tract, County, Imprisonment_Rate, Total_Pop,
-         IncomeMedian, pctWhite, pctBlack, pctBachelorsUp, 
-         pctUnderPoverty, pctOwner, pctRenter, UnempRate16) %>% 
-  drop_na(FIPS, Tract, County, Imprisonment_Rate, Total_Pop,
-          IncomeMedian, pctWhite, pctBlack, pctBachelorsUp, 
-          pctUnderPoverty, pctOwner, pctRenter, UnempRate16) %>% 
-  group_by(County) %>% 
-  summarise(Imprisonment_RateCounty = mean(Imprisonment_Rate), 
-            Total_PopCounty = sum(Total_Pop), 
-            IncomeMedianCounty = mean(IncomeMedian),
-            pctWhiteCounty = mean(pctWhite),
-            pctBlackCounty = mean(pctBlack),
-            pctBachelorsUpCounty = mean(pctBachelorsUp),
-            pctUnderPovertyCounty = mean(pctUnderPoverty),
-            pctOwnerCounty = mean(pctOwner),
-            pctRenterCounty = mean(pctRenter),
-            UnempRate16County = mean(UnempRate16))
-
-## Make dummys for missings
-MD <- MD %>% 
-  mutate(missing = is.na(MD$IncomeMedian))
-
-## Add County level values to tract data and replace NAs with the county mean
-MD <- MD %>% 
-  merge(MD_counties, by = "County") 
-
-MD$IncomeMedian <- ifelse(is.na(MD$IncomeMedian), 
-                           MD$IncomeMedianCounty, 
-                           MD$IncomeMedian)
-
-MD$pctUnderPoverty <- ifelse(is.na(MD$pctUnderPoverty), 
-                              MD$pctUnderPovertyCounty, 
-                              MD$pctUnderPoverty)
-
-MD$pctRenter <- ifelse(is.na(MD$pctRenter), 
-                        MD$pctRenterCounty, 
-                        MD$pctRenter)
-
-MD$pctOwner <- ifelse(is.na(MD$pctOwner), 
-                       MD$pctOwnerCounty, 
-                       MD$pctOwner)
-
-MD$UnempRate16 <- ifelse(is.na(MD$UnempRate16), 
-                          MD$UnempRate16County, 
-                          MD$UnempRate16)
-
-## Create dummy variables
-MD <- MD %>% 
-  mutate(white = case_when(pctWhite > 50 ~ 1, pctWhite <= 50 ~ 0),
-         black = case_when(pctBlack > 50 ~ 1, pctBlack <= 50 ~ 0),
-         bachelorsUp = case_when(pctBachelorsUp > mean(pctBachelorsUp) ~ 1, 
-                                 pctBachelorsUp <= mean(pctBachelorsUp) ~ 0),
-         poverty = case_when(pctUnderPoverty > mean(pctUnderPoverty) ~ 1, 
-                             pctUnderPoverty <= mean(pctUnderPoverty) ~ 0),
-         owner = case_when(pctOwner > 50 ~ 1, pctOwner <= 50 ~ 0),
-         renter = case_when(pctRenter > 50 ~ 1, pctRenter <= 50 ~ 0),
-         unemp = case_when(UnempRate16 > mean(UnempRate16) ~ 1, 
-                           UnempRate16 <= mean(UnempRate16) ~ 0)) %>% 
-  mutate(black_cat = factor(black, labels = c("Not Majority Black", 
-                                              "Majority Black")),
-         white_cat = factor(white, labels = c("Not Majority White", 
-                                              "Majority White")),
-         bachelors_cat = factor(bachelorsUp, 
-                                labels = c("Percent with Bachelor's Dergree or Higher Below Average", 
-                                           "Percent with Bachelor's Dergree or Higher Above Average")),
-         poverty_cat = factor(poverty, 
-                              labels = c("Percent Under Poverty Level Below Average", 
-                                         "Percent Under Poverty Level Above Average")),
-         owner_cat = factor(owner, labels = c("Not Majority Homeowner", 
-                                              "Majority Homeowner")),
-         renter_cat = factor(renter, labels = c("Not Majority Renter", 
-                                                "Majority Renter")),
-         bachelors_cat = factor(bachelorsUp, 
-                                labels = c("Percent with Unemployment Below Average", 
-                                           "Percent with Unemployment Above Average")))
-
-## Print
-write.csv(MD_counties, "data/MD_counties.csv", row.names=FALSE)
-write.csv(MD, "data/MD.csv", row.names=FALSE)
-
-## Save data
-saveRDS(MD, file = "data/MD_02.RDS")
-saveRDS(MD_counties, file = "data/MD_counties_01.RDS")
-
-
-## Extract facilities data from PDF.
-## Parse data to create a dataset with facility name, address, 
-##   and services in Excel.
-## Rename facilities variables.
-## Geocode facilities data in ArcGIS Pro.
-## 
-## Join MD.csv to ACS tracts in ArcGIS for mapping.
-## Join geocoded facilities with joined MD.csv and ACS tracts in ArcGIS Pro.
-## 
-## Calculate the distance to mental health facilities in ArcGIS Pro, and
-##   then convert to miles.
-## Calculate the distance to inpatient mental health facilities in ArcGIS
-##   Pro, and then convert to miles.
-## Calculate the distance to inpatient mental health facilities with Crisis 
-##   Intervention in ArcGIS Pro, and then convert to miles.
-## Calculate the distance to inpatient mental health facilities accepting  
-##   Walk-ins in ArcGIS Pro, and then convert to miles.
-##
-## Join 2010 Urban/Rural census data with 2010 ACS tract shapefiles in
-##   ArcGIS Pro.
-## Apportion 2010 census tracts to 2020 tracts in ArcGIS Pro.
-## 
-
-## Load Facilities Data
-MD_GIS <- read_csv("data/MD_GIS.csv")
-
-## Rename Facilities Variables
-MD_GIS <- MD_GIS %>% 
-  select(FIPS,
-         County,
-         Tract,
-         Imprisonment_Rate,
-         Total_Pop,
-         IncomeMedian,
-         pctWhite,
-         pctBlack,
-         pctBachelorsUp,
-         pctUnderPoverty,
-         pctOwner,
-         pctRenter,
-         UnempRate16,
-         B01001_calc_pctLT18E,
-         B01001_calc_pctGE65E,
-         B01001_calc_pctDependE,
-         B08201_calc_pctNoVehE,
-         B18101_calc_pctDE,
-         B27010_calc_pctMcdE,
-         B27010_calc_pctMcrE,
-         B27010_calc_pctNoInsE,
-         B28001_calc_pctNoSPE,
-         B28002_calc_pctNoIntE,
-         pctRural,
-         missing,
-         Imprisonment_RateCounty,
-         Total_PopCounty,
-         IncomeMedianCounty,
-         pctWhiteCounty,
-         pctBlackCounty,
-         pctBachelorsUpCounty,
-         pctUnderPovertyCounty,
-         pctOwnerCounty,
-         pctRenterCounty,
-         UnempRate16County,
-         white,
-         black,
-         bachelorsUp,
-         poverty,
-         owner,
-         renter,
-         unemp,
-         black_cat,
-         white_cat,
-         bachelors_cat,
-         poverty_cat,
-         owner_cat,
-         renter_cat,
-         USER_FacilityName,
-         USER_Setting_Inpatient,
-         USER_Setting_Outpatient,
-         USER_Setting_PartialHospital,
-         USER_Setting_Residential,
-         USER_Setting_Tele,
-         USER_Emer_CrisisIntervention,
-         USER_Emer_Walkins,
-         USER_FedQualified,
-         USER_Payment_Medicaid,
-         USER_Payment_Medicare,
-         USER_Payment_VA,
-         USER_PaymentAssist_Assistance,
-         USER_PaymentAssist_SlidingScale,
-         USER_Age_Adults,
-         MHF_miles,
-         
-         USER_FacilityName_1,
-         USER_Setting_Inpatient_1,
-         USER_Setting_Outpatient_1,
-         USER_Setting_PartialHospital_1,
-         USER_Setting_Residential_1,
-         USER_Setting_Tele_1,
-         USER_Emer_CrisisIntervention_1,
-         USER_Emer_Walkins_1,
-         USER_FedQualified_1,
-         USER_Payment_Medicaid_1,
-         USER_Payment_Medicare_1,
-         USER_Payment_VA_1,
-         USER_PaymentAssist_Assistance_1,
-         USER_PaymentAssist_SlidingScale_1,
-         USER_Age_Adults_1,
-         Inpatient_miles,
-         
-         USER_FacilityName_12,
-         USER_Setting_Inpatient_12,
-         USER_Setting_Outpatient_12,
-         USER_Setting_PartialHospital_12,
-         USER_Setting_Residential_12,
-         USER_Setting_Tele_12,
-         USER_Emer_CrisisIntervention_12,
-         USER_Emer_Walkins_12,
-         USER_FedQualified_12,
-         USER_Payment_Medicaid_12,
-         USER_Payment_Medicare_12,
-         USER_Payment_VA_12,
-         USER_PaymentAssist_Assistance_12,
-         USER_PaymentAssist_SlidingScale_12,
-         USER_Age_Adults_12,
-         Crisis_miles,
-         
-         USER_FacilityName_12_13,
-         USER_Setting_Inpatient_12_13,
-         USER_Setting_Outpatient_12_13,
-         USER_Setting_PartialHospital_12_13,
-         USER_Setting_Residential_12_13,
-         USER_Setting_Tele_12_13,
-         USER_Emer_CrisisIntervention_12_13,
-         USER_Emer_Walkins_12_13,
-         USER_FedQualified_12_13,
-         USER_Payment_Medicaid_12_13,
-         USER_Payment_Medicare_12_13,
-         USER_Payment_VA_12_13,
-         USER_PaymentAssist_Assistance_12_13,
-         USER_PaymentAssist_SlidingScale_12_13,
-         USER_Age_Adults_12_13,
-         Walkin_miles) %>% 
-  rename("pctUnder18" = "B01001_calc_pctLT18E",
-         "pctOver65" = "B01001_calc_pctGE65E",
-         "pctDepend" = "B01001_calc_pctDependE",
-         "pctNoVeh" = "B08201_calc_pctNoVehE",
-         "pctDisability" = "B18101_calc_pctDE",
-         "pctMedicaid" = "B27010_calc_pctMcdE",
-         "pctMedicare" = "B27010_calc_pctMcrE",
-         "pctNoHI" = "B27010_calc_pctNoInsE",
-         "pctNoSP" = "B28001_calc_pctNoSPE",
-         "pctNoInternet" = "B28002_calc_pctNoIntE",
-         
-         "FacilityName" = "USER_FacilityName",
-         "Setting_Inpatient" = "USER_Setting_Inpatient",
-         "Setting_Outpatient" = "USER_Setting_Outpatient",
-         "Setting_PartialHospital" = "USER_Setting_PartialHospital",
-         "Setting_Residential" = "USER_Setting_Residential",
-         "Setting_Tele" = "USER_Setting_Tele",
-         "Emer_CrisisIntervention" = "USER_Emer_CrisisIntervention",
-         "Emer_Walkins" = "USER_Emer_Walkins",
-         "Payment_Medicaid" = "USER_Payment_Medicaid",
-         "Payment_Medicare" = "USER_Payment_Medicare",
-         "Payment_VA" = "USER_Payment_VA",
-         "PaymentAssist_Assistance" = "USER_PaymentAssist_Assistance",
-         "PaymentAssist_SlidingScale" = "USER_PaymentAssist_SlidingScale",
-         "Age_Adults" = "USER_Age_Adults",
-         "FedQualified" = "USER_FedQualified",
-         
-         "IH_FacilityName" = "USER_FacilityName_1",
-         "IH_Setting_Inpatient" = "USER_Setting_Inpatient_1",
-         "IH_Setting_Outpatient" = "USER_Setting_Outpatient_1",
-         "IH_Setting_PartialHospital" = "USER_Setting_PartialHospital_1",
-         "IH_Setting_Residential" = "USER_Setting_Residential_1",
-         "IH_Setting_Tele" = "USER_Setting_Tele_1",
-         "IH_Emer_CrisisIntervention" = "USER_Emer_CrisisIntervention_1",
-         "IH_Emer_Walkins" = "USER_Emer_Walkins_1",
-         "IH_Payment_Medicaid" = "USER_Payment_Medicaid_1",
-         "IH_Payment_Medicare" = "USER_Payment_Medicare_1",
-         "IH_Payment_VA" = "USER_Payment_VA_1",
-         "IH_PaymentAssist_Assistance" = "USER_PaymentAssist_Assistance_1",
-         "IH_PaymentAssist_SlidingScale" = "USER_PaymentAssist_SlidingScale_1",
-         "IH_Age_Adults" = "USER_Age_Adults_1",
-         "IH_FedQualified" = "USER_FedQualified_1",
-         
-         "Crisis_IH_FacilityName" = "USER_FacilityName_12",
-         "Crisis_IH_Setting_Inpatient" = "USER_Setting_Inpatient_12",
-         "Crisis_IH_Setting_Outpatient" = "USER_Setting_Outpatient_12",
-         "Crisis_IH_Setting_PartialHospital" = "USER_Setting_PartialHospital_12",
-         "Crisis_IH_Setting_Residential" = "USER_Setting_Residential_12",
-         "Crisis_IH_Setting_Tele" = "USER_Setting_Tele_12",
-         "Crisis_IH_Emer_CrisisIntervention" = "USER_Emer_CrisisIntervention_12",
-         "Crisis_IH_Emer_Walkins" = "USER_Emer_Walkins_12",
-         "Crisis_IH_Payment_Medicaid" = "USER_Payment_Medicaid_12",
-         "Crisis_IH_Payment_Medicare" = "USER_Payment_Medicare_12",
-         "Crisis_IH_Payment_VA" = "USER_Payment_VA_12",
-         "Crisis_IH_PaymentAssist_Assistance" = "USER_PaymentAssist_Assistance_12",
-         "Crisis_IH_PaymentAssist_SlidingScale" = "USER_PaymentAssist_SlidingScale_12",
-         "Crisis_IH_Age_Adults" = "USER_Age_Adults_12",
-         "Crisis_IH_FedQualified" = "USER_FedQualified_12",
-         
-         "Walkin_IH_FacilityName" = "USER_FacilityName_12_13",
-         "Walkin_IH_Setting_Inpatient" = "USER_Setting_Inpatient_12_13",
-         "Walkin_IH_Setting_Outpatient" = "USER_Setting_Outpatient_12_13",
-         "Walkin_IH_Setting_PartialHospital" = "USER_Setting_PartialHospital_12_13",
-         "Walkin_IH_Setting_Residential" = "USER_Setting_Residential_12_13",
-         "Walkin_IH_Setting_Tele" = "USER_Setting_Tele_12_13",
-         "Walkin_IH_Emer_CrisisIntervention" = "USER_Emer_CrisisIntervention_12_13",
-         "Walkin_IH_Emer_Walkins" = "USER_Emer_Walkins_12_13",
-         "Walkin_IH_Payment_Medicaid" = "USER_Payment_Medicaid_12_13",
-         "Walkin_IH_Payment_Medicare" = "USER_Payment_Medicare_12_13",
-         "Walkin_IH_Payment_VA" = "USER_Payment_VA_12_13",
-         "Walkin_IH_PaymentAssist_Assistance" = "USER_PaymentAssist_Assistance_12_13",
-         "Walkin_IH_PaymentAssist_SlidingScale" = "USER_PaymentAssist_SlidingScale_12_13",
-         "Walkin_IH_Age_Adults" = "USER_Age_Adults_12_13",
-         "Walkin_IH_FedQualified" = "USER_FedQualified_12_13")
-
-MD_GIS$pctRural <- round(MD_GIS$pctRural, 2)
-
-## Print
-write.csv(MD_GIS, "data/MD_GIS_clean.csv", row.names=FALSE)
-  
-## Save data
-saveRDS(MD_GIS, file = "data/MD_GIS_01.RDS")
-
-```
-
-\newpage
-
-## Excel Formulas
-
-**Formula to test the accuracy of the imprisonment calculations:**\
-`=IF(E2-D2=C2,TRUE,FALSE)`
-
-**Formula to calculate total population:**\
-`=C2+D2`
-
-**Formula to test the accuracy of the imprisonment calculations:**\
-`=IF(ROUND((C2/E2)*100000,0)=F2,TRUE,FALSE)`
-
-**Formula to calculate corrected imprisonment rates:**\
-`=ROUND((C2/E2)*100000,0)`
-
-**Formula to parse out the facility name:**\
-`=LEFT(A2, MIN(FIND(REGEXEXTRACT(A2, "\d"),A2))-1)`
-
-**Formula to parse out the facility address:**\
-`=REGEXEXTRACT(A2,"[0-9]+ .+, [A-Z][a-z]+ [0-9]{5}")`
-
-**Formula to create dummy variables for services codes:**\
-`=COUNTIF(INDEX(data2!$A:$DC, MATCH(data!$B2, data2!$B:$B, 0), 0), data!D$1)`
-
-\newpage
-
-## ArcGIS Pro Log
-
-**Export Table**\
-Input Table - MD.csv\
-Output Table - MD_ExportTable
-
-**Export Table**\
-Input Table - MD_counties.csv\
-Output Table - MD_counties_ExportTable
-
-**Export Table**\
-Input Table - Facilities.csv\
-Output Table - Facilities_ExportTable
-
-**Geocode Addresses**\
-Input Table - Facilities_ExportTable\
-Input Address Locator - https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/Esri World Geocoder\
-Input Address Fields - 'Single Line Input' Address VISIBLE NONE\
-Output Feature Class - Facilities_Geocode\
-Dynamic Output Feature Class - STATIC\
-Country - US\
-Preferred Location Type - ADDRESS_LOCATION\
-Output Fields - ALL
-
-**Export Features**\
-Input Features - `ACS Context for Emergency Response - Boundaries\Tract`\
-Output Feature Class - ACS_Tract
-
-**Calculate Field**\
-Input Table - ACS_Tract\
-Field Name - FIPS\
-Expression - `!GEOID!*1`\
-Expression Type - PYTHON3
-
-**Add Join**\
-Input Table - ACS_Tract\
-Input Join Field - FIPS\
-Join Table - MD_ExportTable\
-Join Table Field - FIPS\
-Keep All Target Features - KEEP_ALL\
-Updated Input Layer or Table View - ACS_Tract_ExportFeatures\
-Index Joined Fields - NO_INDEX_JOIN_FIELDS
-
-**Export Features**\
-Input Table - ACS_Tract\
-Output Table - MD
-
-**Project**\
-Input Dataset or Feature Class - Facilities_Geocode\
-Output Dataset or Feature Class - Facilities_MDSP\
-Output Coordinate System - `PROJCS["NAD_1983_StatePlane_Maryland_FIPS_1900_Feet",`\
-`GEOGCS["GCS_North_American_1983",DATUM["D_North_American_1983",`\
-`SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],`\
-`UNIT["Degree",0.0174532925199433]],PROJECTION["Lambert_Conformal_Conic"],`\
-`PARAMETER["False_Easting",1312333.333333333],PARAMETER["False_Northing",0.0],`\
-`PARAMETER["Central_Meridian",-77.0],PARAMETER["Standard_Parallel_1",38.3],`\
-`PARAMETER["Standard_Parallel_2",39.45],PARAMETER["Latitude_Of_Origin",37.66666666666666],`\
-`UNIT["Foot_US",0.3048006096012192]]`\
-Geographic Transformation - NAD_1983_To_WGS_1984_1\
-Input Coordinate System - `GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",`\
-`SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],`\
-`UNIT["Degree",0.0174532925199433]]`\
-Preserve Shape - NO_PRESERVE_SHAPE\
-Vertical - NO_VERTICAL
-
-**Project**\
-Input Dataset or Feature Class - County Boundaries\
-Output Dataset or Feature Class - County_Boundaries_MDSP\
-Output Coordinate System - `PROJCS["NAD_1983_StatePlane_Maryland_FIPS_1900_Feet",`\
-`GEOGCS["GCS_North_American_1983",DATUM["D_North_American_1983",`\
-`SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],`\
-`UNIT["Degree",0.0174532925199433]],PROJECTION["Lambert_Conformal_Conic"],`\
-`PARAMETER["False_Easting",1312333.333333333],PARAMETER["False_Northing",0.0],`\
-`PARAMETER["Central_Meridian",-77.0],PARAMETER["Standard_Parallel_1",38.3],`\
-`PARAMETER["Standard_Parallel_2",39.45],PARAMETER["Latitude_Of_Origin",37.66666666666666],`\
-`UNIT["Foot_US",0.3048006096012192]]`\
-Geographic Transformation - NAD_1983_To_WGS_1984_1\
-Input Coordinate System - `GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",`\
-`SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],`\
-`UNIT["Degree",0.0174532925199433]]`\
-Preserve Shape - NO_PRESERVE_SHAPE\
-Vertical - NO_VERTICAL
-
-**Project**\
-Input Dataset or Feature Class - MD\
-Output Dataset or Feature Class - MD_MDSP\
-Output Coordinate System - `PROJCS["NAD_1983_StatePlane_Maryland_FIPS_1900_Feet",`\
-`GEOGCS["GCS_North_American_1983",DATUM["D_North_American_1983",`\
-`SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],`\
-`UNIT["Degree",0.0174532925199433]],PROJECTION["Lambert_Conformal_Conic"],`\
-`PARAMETER["False_Easting",1312333.333333333],PARAMETER["False_Northing",0.0],`\
-`PARAMETER["Central_Meridian",-77.0],PARAMETER["Standard_Parallel_1",38.3],`\
-`PARAMETER["Standard_Parallel_2",39.45],PARAMETER["Latitude_Of_Origin",37.66666666666666],`\
-`UNIT["Foot_US",0.3048006096012192]]`\
-Geographic Transformation - NAD_1983_To_WGS_1984_1\
-Input Coordinate System - `GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",`\
-`SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],`\
-`UNIT["Degree",0.0174532925199433]]` Preserve Shape - NO_PRESERVE_SHAPE\
-Vertical - NO_VERTICAL
-
-**Select Layer By Attribute**\
-Input Rows - Facilities_MDSP\
-Selection Type - NEW_SELECTION\
-Expression - `USER_VeteransOnly = 0`\
-Updated Layer Or Table View - Facilities_MDSP\
-Count - 230
-
-**Spatial Join**\
-Target Features - MD_MDSP\
-Join Features - Facilities_MDSP\
-Output Feature Class - MD_MHF\
-Join Operation - JOIN_ONE_TO_MANY\
-Keep All Target Features - KEEP_ALL\
-Match Option - CLOSEST\
-Distance Field Name - MHF_distance
-
-**Calculate Field**\
-Input Table - MD_MHF\
-Field Name - MHF_miles\
-Expression - `!MHF_distance! / 5280`\
-Expression Type - PYTHON3
-
-**Select Layer By Attribute**\
-Input Rows - Facilities_MDSP\
-Selection Type - NEW_SELECTION\
-Expression - `USER_VeteransOnly = 0 And USER_Setting_Inpatient = 1`\
-Updated Layer Or Table View - Facilities_MDSP\
-Count - 20
-
-**Spatial Join**\
-Target Features - MD_MHF\
-Join Features - Facilities_MDSP\
-Output Feature Class - MD_MHF_IH\
-Join Operation - JOIN_ONE_TO_MANY\
-Keep All Target Features - KEEP_ALL\
-Match Option - CLOSEST\
-Distance Field Name - Inpatient_distance
-
-**Calculate Field**\
-Input Table - MD_MHF_IH\
-Field Name - Inpatient_miles\
-Expression - `!Inpatient_distance! / 5280`\
-Expression Type - PYTHON3
-
-**Select Layer By Attribute**\
-Input Rows - Facilities_MDSP\
-Selection Type - NEW_SELECTION\
-Expression - `USER_VeteransOnly = 0 And USER_Setting_Inpatient = 1 And USER_Emer_CrisisIntervention = 1`\
-Updated Layer Or Table View - Facilities_MDSP\
-Count - 13
-
-**Spatial Join**\
-Target Features - MD_MHF_IH\
-Join Features - Facilities\_\_MDSP\
-Output Feature Class - MD_MHF_IH_Crisis\
-Join Operation - JOIN_ONE_TO_MANY\
-Keep All Target Features - KEEP_ALL\
-Match Option - CLOSEST\
-Distance Field Name - Crisis_distance
-
-**Calculate Field**\
-Input Table - MD_MHF_IH_Crisis\
-Field Name - Crisis_miles\
-Expression - `!Crisis_distance! / 5280`\
-Expression Type - PYTHON3
-
-**Select Layer By Attribute**\
-Input Rows - Facilities_MDSP\
-Selection Type - NEW_SELECTION\
-Expression - `USER_VeteransOnly = 0 And USER_Setting_Inpatient = 1 And USER_Emer_Walkins = 1`\
-Updated Layer Or Table View - Facilities_MDSP\
-Count - 15
-
-**Spatial Join**\
-Target Features - MD_MHF_IH_Crisis\
-Join Features - Facilities_MDSP\
-Output Feature Class - MD_MHF_IH_Crisis_Walk\
-Join Operation - JOIN_ONE_TO_MANY\
-Keep All Target Features - KEEP_ALL\
-Match Option - CLOSEST\
-Distance Field Name - Walkin_distance
-
-**Calculate Field**\
-Input Table - MD_MHF_IH_Crisis_Walk\
-Field Name - Walkin_miles\
-Expression - `!Walkin_distance! / 5280`\
-Expression Type - PYTHON3
-
-**Export Features**\
-Input Features - MD_MHF_IH_Crisis_Walk\
-Output Feature Class - MD\
-Use Field Alias as Name - NOT_USE_ALIAS
-
-**Export Table**\
-Input Table - Urban_Rural.csv\
-Output Table - Urban_Rural_ExportTable
-
-**Calculate Field**\
-Input Table - Urban_Rural_ExportTable\
-Field Name - FIPS\
-Expression - `!GEO_ID![-11:]`\
-Expression Type - PYTHON3
-
-**Add Join**\
-Input Table - tl_2010_24_tract10\
-Input Join Field - GEOID10\
-Join Table - Urban_Rural_ExportTable\
-Join Table Field - FIPS\
-Keep All Target Features - KEEP_ALL\
-Updated Input Layer or Table View - tl_2010_24_tract10\
-Index Joined Field - INDEX_JOIN_FIELDS
-
-**Export Features**\
-Input Features - tl_2010_24_tract10\
-Output Feature Class - Urban_Rural2010\
-Use Field Alias as Name - NOT_USE_ALIAS
-
-**Apportion Polygon**\
-Input Polygons - Urban_Rural2010\
-Fields to Apportion - H002001;H002002;H002005;H002006\
-Target Polygons - MD\
-Output Feature Class - MD_ApportionPoly\
-Apportion Method - AREA\
-Weight Field - Total_Pop\
-Maintain target geometry - MAINTAIN_GEOMETRIES
-
-**Calculate Field**\
-Input Table - MD_ApportionPoly\
-Field Name - pctRural\
-Expression - `(!H002005! / !H002001!) *100`\
-Expression Type - PYTHON3
-
-**Select Layer By Attribute**\
-Input Rows - Facilities_MDSP\
-Selection Type - NEW_SELECTION\
-Expression - `USER_VeteransOnly = 0 And USER_Setting_Inpatient = 1`\
-Updated Layer Or Table View - Facilities_MDSP\
-Count - 20
-
-**Make OD Cost Matrix Analysis Layer**\
-Network Data Source - https://www.arcgis.com/\
-Layer Name - Urban Tracts to Inpatient\
-Travel Mode - Driving Time\
-Number of Destinations to Find - 1 Time Zone - LOCAL_TIME_AT_LOCATIONS\
-Line Shape - STRAIGHT_LINES\
-Network Analyst Layer - Urban Tracts to Inpatient\
-Ignore Invalid Locations at Solve Time - SKIP
-
-**Add Locations**\
-Input Network Analysis Layer - Urban Tracts to Inpatient\
-Sub Layer - Origins\
-Input Locations - MDurban_Points\
-Field Mappings - Name FIPS\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Urban Tracts to Inpatient\
-Allow automatic relocating at solve time - ALLOW
-
-**Add Locations**\
-Input Network Analysis Layer - Urban Tracts to Inpatient\
-Sub Layer - Destinations\
-Input Locations - Facilities_MDSP\
-Field Mappings - Name USER_FacilityName\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Urban Tracts to Inpatient\
-Allow automatic relocating at solve time - ALLOW
-
-**Solve**\
-Input Network Analysis Layer - Urban Tracts to Inpatient\
-Ignore Invalid Locations - SKIP\
-Terminate on Solve Error - TERMINATE\
-Network Analyst Layer - Urban Tracts to Inpatient\
-Solve Succeeded - true
-
-**Export Features**\
-Input Features - `Urban Tracts to Inpatient\Lines`\
-Output Feature Class - Urban_Lines_Inpatient\
-Use Field Alias as Name - NOT_USE_ALIAS
-
-**Calculate Field**\
-Input Table - Urban_Lines_Inpatient\
-Field Name - FIPS\
-Expression - `!Name![:11]`\
-Expression Type - PYTHON3
-
-**Delete Identical**\
-Input Dataset - Urban_Lines_Inpatient\
-Field(s) - FIPS\
-XY Tolerance -\
-Z Tolerance - 0\
-Updated Input Dataset - Urban_Lines_Inpatient
-
-**Make OD Cost Matrix Analysis Layer**\
-Network Data Source - https://www.arcgis.com/\
-Layer Name - Rural Tracts to Inpatient\
-Travel Mode - Driving Time\
-Number of Destinations to Find - 1 Time Zone - LOCAL_TIME_AT_LOCATIONS\
-Line Shape - STRAIGHT_LINES\
-Network Analyst Layer - Rural Tracts to Inpatient\
-Ignore Invalid Locations at Solve Time - SKIP
-
-**Add Locations**\
-Input Network Analysis Layer - Rural Tracts to Inpatient\
-Sub Layer - Origins\
-Input Locations - MDrural_Points\
-Field Mappings - Name FIPS\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Rural Tracts to Inpatient\
-Allow automatic relocating at solve time - ALLOW
-
-**Add Locations**\
-Input Network Analysis Layer - Rural Tracts to Inpatient\
-Sub Layer - Destinations\
-Input Locations - Facilities_MDSP\
-Field Mappings - Name USER_FacilityName\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Rural Tracts to Inpatient\
-Allow automatic relocating at solve time - ALLOW
-
-**Solve**\
-Input Network Analysis Layer - Rural Tracts to Inpatient\
-Ignore Invalid Locations - SKIP\
-Terminate on Solve Error - TERMINATE\
-Network Analyst Layer - Rural Tracts to Inpatient\
-Solve Succeeded - true
-
-**Export Features**\
-Input Features - `Rural Tracts to Inpatient\Lines`\
-Output Feature Class - Rural_Lines_Inpatient\
-Use Field Alias as Name - NOT_USE_ALIAS
-
-**Calculate Field**\
-Input Table - Rural_Lines_Inpatient\
-Field Name - FIPS\
-Expression - `!Name![:11]`\
-Expression Type - PYTHON3
-
-**Delete Identical**\
-Input Dataset - Rural_Lines_Inpatient\
-Field(s) - FIPS\
-XY Tolerance -\
-Z Tolerance - 0\
-Updated Input Dataset - Rural_Lines_Inpatient
-
-**Append**\
-Input Datasets - Rural_Lines_Inpatient\
-Target Dataset - Urban_Lines_Inpatient\
-Field Matching Type - TEST\
-Updated Target Dataset - Urban_Lines_Inpatient
-
-**Join Field**\
-Input Table - MD_ApportionPoly\
-Input Join Field - GEOID\
-Join Table - Urban_Lines_Inpatient\
-Join Table Field - FIPS\
-Transfer Fields - Name;Total_TravelTime;Total_Miles\
-Updated Input Table - MD_ApportionPoly\
-Transfer Method - NOT_USE_FM
-
-**Select Layer By Attribute**\
-Input Rows - Facilities_MDSP\
-Selection Type - NEW_SELECTION\
-Expression - `USER_VeteransOnly = 0 And USER_Setting_Inpatient = 1 And USER_Emer_CrisisIntervention = 1`\
-Updated Layer Or Table View - Facilities_MDSP\
-Count - 13
-
-**Make OD Cost Matrix Analysis Layer**\
-Network Data Source - https://www.arcgis.com/\
-Layer Name - Urban Tracts to Crisis\
-Travel Mode - Driving Time\
-Number of Destinations to Find - 1 Time Zone - LOCAL_TIME_AT_LOCATIONS\
-Line Shape - STRAIGHT_LINES\
-Network Analyst Layer - Urban Tracts to Crisis\
-Ignore Invalid Locations at Solve Time - SKIP
-
-**Add Locations**\
-Input Network Analysis Layer - Urban Tracts to Crisis\
-Sub Layer - Origins\
-Input Locations - MDurban_Points\
-Field Mappings - Name FIPS\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Urban Tracts to Crisis\
-Allow automatic relocating at solve time - ALLOW
-
-**Add Locations**\
-Input Network Analysis Layer - Urban Tracts to Crisis\
-Sub Layer - Destinations\
-Input Locations - Facilities_MDSP\
-Field Mappings - Name USER_FacilityName\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Urban Tracts to Crisis\
-Allow automatic relocating at solve time - ALLOW
-
-**Solve**\
-Input Network Analysis Layer - Urban Tracts to Crisis\
-Ignore Invalid Locations - SKIP\
-Terminate on Solve Error - TERMINATE\
-Network Analyst Layer - Urban Tracts to Crisis\
-Solve Succeeded - true
-
-**Export Features**\
-Input Features - `Urban Tracts to Crisis\Lines`\
-Output Feature Class - Urban_Lines_Crisis\
-Use Field Alias as Name - NOT_USE_ALIAS
-
-**Calculate Field**\
-Input Table - Urban_Lines_Crisis\
-Field Name - FIPS\
-Expression - `!Name![:11]`\
-Expression Type - PYTHON3
-
-**Delete Identical**\
-Input Dataset - Urban_Lines_Crisis\
-Field(s) - FIPS\
-XY Tolerance -\
-Z Tolerance - 0\
-Updated Input Dataset - Urban_Lines_Crisis
-
-**Make OD Cost Matrix Analysis Layer**\
-Network Data Source - https://www.arcgis.com/\
-Layer Name - Rural Tracts to Crisis\
-Travel Mode - Driving Time\
-Number of Destinations to Find - 1 Time Zone - LOCAL_TIME_AT_LOCATIONS\
-Line Shape - STRAIGHT_LINES\
-Network Analyst Layer - Rural Tracts to Crisis\
-Ignore Invalid Locations at Solve Time - SKIP
-
-**Add Locations**\
-Input Network Analysis Layer - Rural Tracts to Crisis\
-Sub Layer - Origins\
-Input Locations - MDrural_Points\
-Field Mappings - Name FIPS\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Rural Tracts to Crisis\
-Allow automatic relocating at solve time - ALLOW
-
-**Add Locations**\
-Input Network Analysis Layer - Rural Tracts to Crisis\
-Sub Layer - Destinations\
-Input Locations - Facilities_MDSP\
-Field Mappings - Name USER_FacilityName\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Rural Tracts to Crisis\
-Allow automatic relocating at solve time - ALLOW
-
-**Solve**\
-Input Network Analysis Layer - Rural Tracts to Crisis\
-Ignore Invalid Locations - SKIP\
-Terminate on Solve Error - TERMINATE\
-Network Analyst Layer - Rural Tracts to Crisis\
-Solve Succeeded - true
-
-**Export Features**\
-Input Features - `Rural Tracts to Crisis\Lines`\
-Output Feature Class - Rural_Lines_Crisis\
-Use Field Alias as Name - NOT_USE_ALIAS
-
-**Calculate Field**\
-Input Table - Rural_Lines_Crisis\
-Field Name - FIPS\
-Expression - `!Name![:11]`\
-Expression Type - PYTHON3
-
-**Delete Identical**\
-Input Dataset - Rural_Lines_Crisis\
-Field(s) - FIPS\
-XY Tolerance -\
-Z Tolerance - 0\
-Updated Input Dataset - Rural_Lines_Crisis
-
-**Append**\
-Input Datasets - Rural_Lines_Crisis\
-Target Dataset - Urban_Lines_Crisis\
-Field Matching Type - TEST\
-Updated Target Dataset - Urban_Lines_Crisis
-
-**Join Field**\
-Input Table - MD_ApportionPoly\
-Input Join Field - GEOID\
-Join Table - Urban_Lines_Crisis\
-Join Table Field - FIPS\
-Transfer Fields - Name;Total_TravelTime;Total_Miles\
-Updated Input Table - MD_ApportionPoly\
-Transfer Method - NOT_USE_FM
-
-**Select Layer By Attribute**\
-Input Rows - Facilities_MDSP\
-Selection Type - NEW_SELECTION\
-Expression - `USER_VeteransOnly = 0`\
-Updated Layer Or Table View - Facilities_MDSP\
-Count - 230
-
-**Make OD Cost Matrix Analysis Layer**\
-Network Data Source - https://www.arcgis.com/\
-Layer Name - Urban Tracts to MHF\
-Travel Mode - Driving Time\
-Number of Destinations to Find - 1 Time Zone - LOCAL_TIME_AT_LOCATIONS\
-Line Shape - STRAIGHT_LINES\
-Network Analyst Layer - Urban Tracts to MHF\
-Ignore Invalid Locations at Solve Time - SKIP
-
-**Add Locations**\
-Input Network Analysis Layer - Urban Tracts to MHF\
-Sub Layer - Origins\
-Input Locations - MDurban_Points\
-Field Mappings - Name FIPS\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Urban Tracts to MHF\
-Allow automatic relocating at solve time - ALLOW
-
-**Add Locations**\
-Input Network Analysis Layer - Urban Tracts to MHF\
-Sub Layer - Destinations\
-Input Locations - Facilities_MDSP\
-Field Mappings - Name USER_FacilityName\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Urban Tracts to MHF\
-Allow automatic relocating at solve time - ALLOW
-
-**Solve**\
-Input Network Analysis Layer - Urban Tracts to MHF\
-Ignore Invalid Locations - SKIP\
-Terminate on Solve Error - TERMINATE\
-Network Analyst Layer - Urban Tracts to MHF\
-Solve Succeeded - true
-
-**Export Features**\
-Input Features - `Urban Tracts to MHF\Lines`\
-Output Feature Class - Urban_Lines_MHF\
-Use Field Alias as Name - NOT_USE_ALIAS
-
-**Calculate Field**\
-Input Table - Urban_Lines_MHF\
-Field Name - FIPS\
-Expression - `!Name![:11]`\
-Expression Type - PYTHON3
-
-**Delete Identical**\
-Input Dataset - Urban_Lines_MHF\
-Field(s) - FIPS\
-XY Tolerance -\
-Z Tolerance - 0\
-Updated Input Dataset - Urban_Lines_MHF
-
-**Make OD Cost Matrix Analysis Layer**\
-Network Data Source - https://www.arcgis.com/\
-Layer Name - Rural Tracts to MHF\
-Travel Mode - Driving Time\
-Number of Destinations to Find - 1 Time Zone - LOCAL_TIME_AT_LOCATIONS\
-Line Shape - STRAIGHT_LINES\
-Network Analyst Layer - Rural Tracts to MHF\
-Ignore Invalid Locations at Solve Time - SKIP
-
-**Add Locations**\
-Input Network Analysis Layer - Rural Tracts to MHF\
-Sub Layer - Origins\
-Input Locations - MDrural_Points\
-Field Mappings - Name FIPS\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Rural Tracts to MHF\
-Allow automatic relocating at solve time - ALLOW
-
-**Add Locations**\
-Input Network Analysis Layer - Rural Tracts to MHF\
-Sub Layer - Destinations\
-Input Locations - Facilities_MDSP\
-Field Mappings - Name USER_FacilityName\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Rural Tracts to MHF\
-Allow automatic relocating at solve time - ALLOW
-
-**Solve**\
-Input Network Analysis Layer - Rural Tracts to MHF\
-Ignore Invalid Locations - SKIP\
-Terminate on Solve Error - TERMINATE\
-Network Analyst Layer - Rural Tracts to MHF\
-Solve Succeeded - true
-
-**Export Features**\
-Input Features - `Rural Tracts to MHF\Lines`\
-Output Feature Class - Rural_Lines_MHF\
-Use Field Alias as Name - NOT_USE_ALIAS
-
-**Calculate Field**\
-Input Table - Rural_Lines_MHF\
-Field Name - FIPS\
-Expression - `!Name![:11]`\
-Expression Type - PYTHON3
-
-**Delete Identical**\
-Input Dataset - Rural_Lines_MHF\
-Field(s) - FIPS\
-XY Tolerance -\
-Z Tolerance - 0\
-Updated Input Dataset - Rural_Lines_MHF
-
-**Append**\
-Input Datasets - Rural_Lines_MHF\
-Target Dataset - Urban_Lines_MHF\
-Field Matching Type - TEST\
-Updated Target Dataset - Urban_Lines_MHF
-
-**Join Field**\
-Input Table - MD_ApportionPoly\
-Input Join Field - GEOID\
-Join Table - Urban_Lines_Walkin\
-Join Table Field - FIPS\
-Transfer Fields - Name;Total_TravelTime;Total_Miles\
-Updated Input Table - MD_ApportionPoly\
-Transfer Method - NOT_USE_FM
-
-**Select Layer By Attribute**\
-Input Rows - Facilities_MDSP\
-Selection Type - NEW_SELECTION\
-Expression - `USER_VeteransOnly = 0 And USER_Setting_Inpatient = 1 And USER_Emer_Walkins = 1`\
-Updated Layer Or Table View - Facilities_MDSP\
-Count - 15
-
-**Make OD Cost Matrix Analysis Layer**\
-Network Data Source - https://www.arcgis.com/\
-Layer Name - Urban Tracts to Walkin\
-Travel Mode - Driving Time\
-Number of Destinations to Find - 1 Time Zone - LOCAL_TIME_AT_LOCATIONS\
-Line Shape - STRAIGHT_LINES\
-Network Analyst Layer - Urban Tracts to Walkin\
-Ignore Invalid Locations at Solve Time - SKIP
-
-**Add Locations**\
-Input Network Analysis Layer - Urban Tracts to Walkin\
-Sub Layer - Origins\
-Input Locations - MDurban_Points\
-Field Mappings - Name FIPS\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Urban Tracts to Walkin\
-Allow automatic relocating at solve time - ALLOW
-
-**Add Locations**\
-Input Network Analysis Layer - Urban Tracts to Walkin\
-Sub Layer - Destinations\
-Input Locations - Facilities_MDSP\
-Field Mappings - Name USER_FacilityName\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Urban Tracts to Walkin\
-Allow automatic relocating at solve time - ALLOW
-
-**Solve**\
-Input Network Analysis Layer - Urban Tracts to Walkin\
-Ignore Invalid Locations - SKIP\
-Terminate on Solve Error - TERMINATE\
-Network Analyst Layer - Urban Tracts to Walkin\
-Solve Succeeded - true
-
-**Export Features**\
-Input Features - `Urban Tracts to Walkin\Lines`\
-Output Feature Class - Urban_Lines_Walkin\
-Use Field Alias as Name - NOT_USE_ALIAS
-
-**Calculate Field**\
-Input Table - Urban_Lines_Walkin\
-Field Name - FIPS\
-Expression - `!Name![:11]`\
-Expression Type - PYTHON3
-
-**Delete Identical**\
-Input Dataset - Urban_Lines_Walkin\
-Field(s) - FIPS\
-XY Tolerance -\
-Z Tolerance - 0\
-Updated Input Dataset - Urban_Lines_Walkin
-
-**Make OD Cost Matrix Analysis Layer**\
-Network Data Source - https://www.arcgis.com/\
-Layer Name - Rural Tracts to Walkin\
-Travel Mode - Driving Time\
-Number of Destinations to Find - 1 Time Zone - LOCAL_TIME_AT_LOCATIONS\
-Line Shape - STRAIGHT_LINES\
-Network Analyst Layer - Rural Tracts to Walkin\
-Ignore Invalid Locations at Solve Time - SKIP
-
-**Add Locations**\
-Input Network Analysis Layer - Rural Tracts to Walkin\
-Sub Layer - Origins\
-Input Locations - MDrural_Points\
-Field Mappings - Name FIPS\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Rural Tracts to Walkin\
-Allow automatic relocating at solve time - ALLOW
-
-**Add Locations**\
-Input Network Analysis Layer - Rural Tracts to Walkin\
-Sub Layer - Destinations\
-Input Locations - Facilities_MDSP\
-Field Mappings - Name USER_FacilityName\
-Search Tolerance - 20000 Meters\
-Search Criteria - main.Routing_Streets SHAPE\
-Find Closest among All Classes - MATCH_TO_CLOSEST\
-Append to Existing Locations - APPEND\
-Snap to Network - NO_SNAP\
-Snap Offset - 5 Meters\
-Exclude Restricted Portions of the Network - EXCLUDE\
-Updated Input Network Analysis Layer - Rural Tracts to Walkin\
-Allow automatic relocating at solve time - ALLOW
-
-**Solve**\
-Input Network Analysis Layer - Rural Tracts to Walkin\
-Ignore Invalid Locations - SKIP\
-Terminate on Solve Error - TERMINATE\
-Network Analyst Layer - Rural Tracts to Walkin\
-Solve Succeeded - true
-
-**Export Features**\
-Input Features - `Rural Tracts to Walkin\Lines`\
-Output Feature Class - Rural_Lines_Walkin\
-Use Field Alias as Name - NOT_USE_ALIAS
-
-**Calculate Field**\
-Input Table - Rural_Lines_Walkin\
-Field Name - FIPS\
-Expression - `!Name![:11]`\
-Expression Type - PYTHON3
-
-**Delete Identical**\
-Input Dataset - Rural_Lines_Walkin\
-Field(s) - FIPS\
-XY Tolerance -\
-Z Tolerance - 0\
-Updated Input Dataset - Rural_Lines_Walkin
-
-**Append**\
-Input Datasets - Rural_Lines_Walkin\
-Target Dataset - Urban_Lines_Walkin\
-Field Matching Type - TEST\
-Updated Target Dataset - Urban_Lines_Walkin
-
-**Join Field**\
-Input Table - MD_ApportionPoly\
-Input Join Field - GEOID\
-Join Table - Urban_Lines_Walkin\
-Join Table Field - FIPS\
-Transfer Fields - Name;Total_TravelTime;Total_Miles\
-Updated Input Table - MD_ApportionPoly\
-Transfer Method - NOT_USE_FM
-
-**Export Table**\
-Input Table - MD_ApportionPoly\
-Output Table - MD_GIS\
-Use Field Alias as Name - NOT_USE_ALIAS
 
 \newpage
 
